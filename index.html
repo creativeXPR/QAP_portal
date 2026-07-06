@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Portal Authentication</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #eff2ff 0%, #ecd9ff 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .login-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #999;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        .login-section {
+            display: none;
+        }
+        .login-section.active {
+            display: block;
+        }
+        .google-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+            text-align: center;
+        }
+        .result-box.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .result-box.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .profile-form {
+            display: none;
+        }
+        .profile-form.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>University Portal</h1>
+        <p class="subtitle">Sign in to access your dashboard</p>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('google')">Google Sign-In</button>
+            <button class="tab-btn" onclick="switchTab('email')">Email / Username</button>
+            <button class="tab-btn" onclick="switchTab('register')">Sign Up</button>
+        </div>
+
+        <!-- Google Login Tab -->
+        <div id="google-section" class="login-section active">
+            <div class="google-container">
+                <div id="g_id_onload"
+                    data-client_id="939210716621-jtf38t8tluotrd0jb467uo6f9vm9nnqn.apps.googleusercontent.com"
+                    data-callback="handleGoogleResponse"
+                    data-auto_prompt="false">
+                </div>
+                <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline"></div>
+            </div>
+        </div>
+
+        <!-- Email/Username Login Tab -->
+        <div id="email-section" class="login-section">
+            <div class="form-group">
+                <label for="identifier">Email or Username:</label>
+                <input type="text" id="identifier" placeholder="Enter your email or username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" placeholder="Enter your password" required>
+            </div>
+            <button class="btn btn-primary" onclick="handleEmailLogin()">Sign In</button>
+        </div>
+
+        <!-- Registration Tab -->
+        <div id="register-section" class="login-section">
+            <div class="form-group">
+                <label for="reg-username">Username:</label>
+                <input type="text" id="reg-username" placeholder="Choose a username" required>
+            </div>
+            <div class="form-group">
+                <label for="reg-email">Email:</label>
+                <input type="email" id="reg-email" placeholder="Enter your email" required>
+            </div>
+            <div class="form-group">
+                <label for="reg-password">Password:</label>
+                <input type="password" id="reg-password" placeholder="Enter a strong password" required>
+            </div>
+            <div class="form-group">
+                <label for="reg-password-confirm">Confirm Password:</label>
+                <input type="password" id="reg-password-confirm" placeholder="Confirm your password" required>
+            </div>
+            <div class="form-group">
+                <label for="reg-status">University Status:</label>
+                <select id="reg-status">
+                    <option value="student">Student</option>
+                    <option value="focal_person">Focal Person</option>
+                    <option value="principle_officer">Principle Officer</option>
+                    <option value="admin">Administrator</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="handleRegistration()">Create Account</button>
+        </div>
+
+        <!-- Profile Completion Form (shown when profile_complete === false) -->
+        <div id="profile-form" class="profile-form">
+            <h2 style="font-size: 18px; margin-bottom: 15px;">Complete Your Profile</h2>
+            <div class="form-group">
+                <label for="profile-username">Username:</label>
+                <input type="text" id="profile-username" placeholder="Choose a username" required>
+            </div>
+            <div class="form-group">
+                <label for="profile-status">University Status:</label>
+                <select id="profile-status">
+                    <option value="student">Student</option>
+                    <option value="focal_person">Focal Person</option>
+                    <option value="principle_officer">Principle Officer</option>
+                    <option value="admin">Administrator</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="submitProfileForm()">Save Profile</button>
+        </div>
+
+        <!-- Result Message -->
+        <div id="result" class="result-box"></div>
+    </div>
+
+    <script>
+        let accessToken = "";
+        let currentLoginMethod = "";
+
+        function switchTab(method) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('google-section').classList.remove('active');
+            document.getElementById('email-section').classList.remove('active');
+            document.getElementById('register-section').classList.remove('active');
+            document.getElementById(`${method}-section`).classList.add('active');
+            clearResult();
+        }
+
+        function clearResult() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.classList.remove('success', 'error');
+            resultDiv.innerHTML = '';
+        }
+
+        function showResult(message, isError = false) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = message;
+            resultDiv.classList.remove('success', 'error');
+            resultDiv.classList.add(isError ? 'error' : 'success');
+        }
+
+        // ===== GOOGLE LOGIN =====
+        async function handleGoogleResponse(response) {
+            console.log("Google Sign-In successful");
+            currentLoginMethod = "google";
+            showResult("Authenticating with Google...");
+
+            try {
+                const djangoResponse = await fetch('http://127.0.0.1:8000/api/auth/google/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_token: response.credential })
+                });
+
+                const data = await djangoResponse.json();
+
+                if (djangoResponse.ok) {
+                    accessToken = data.access;
+                    localStorage.setItem('access_token', data.access);
+                    localStorage.setItem('refresh_token', data.refresh);
+
+                    if (data.profile_complete === false) {
+                        localStorage.setItem('user_id', data.user_id);
+                        showProfileForm();
+                        showResult("Authentication successful! Please complete your profile.");
+                    } else {
+                        showResult(`✅ Welcome back, ${data.user.email}!`, false);
+                    }
+                } else {
+                    showResult("Authentication failed: " + (data.error || "Unknown error"), true);
+                }
+            } catch (err) {
+                showResult("Error connecting to backend: " + err.message, true);
+                console.error(err);
+            }
+        }
+
+        // ===== EMAIL/USERNAME LOGIN =====
+        async function handleEmailLogin() {
+            const identifier = document.getElementById('identifier').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!identifier || !password) {
+                showResult("Please enter both email/username and password", true);
+                return;
+            }
+
+            currentLoginMethod = "email";
+            showResult("Signing in...");
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/auth/login/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: identifier,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    accessToken = data.access;
+                    localStorage.setItem('access_token', data.access);
+                    localStorage.setItem('refresh_token', data.refresh);
+
+                    if (data.profile_complete === false) {
+                        localStorage.setItem('user_id', data.user_id);
+                        showProfileForm();
+                        showResult("Login successful! Please complete your profile.");
+                    } else {
+                        showResult(`✅ Welcome back, ${data.user.username}!`, false);
+                    }
+                } else {
+                    showResult("Login failed: " + (data.error || "Invalid credentials"), true);
+                }
+            } catch (err) {
+                showResult("Error connecting to backend: " + err.message, true);
+                console.error(err);
+            }
+        }
+
+        // ===== REGISTRATION =====
+        async function handleRegistration() {
+            const username = document.getElementById('reg-username').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-password').value.trim();
+            const passwordConfirm = document.getElementById('reg-password-confirm').value.trim();
+            const status = document.getElementById('reg-status').value;
+
+            if (!username || !email || !password || !passwordConfirm) {
+                showResult("Please fill in all fields", true);
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                showResult("Passwords do not match", true);
+                return;
+            }
+
+            showResult("Creating account...");
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/auth/google/register/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: username,
+                        email: email,
+                        password: password,
+                        password_confirm: passwordConfirm,
+                        status: status
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    accessToken = data.access;
+                    localStorage.setItem('access_token', data.access);
+                    localStorage.setItem('refresh_token', data.refresh);
+                    localStorage.setItem('user_id', data.user_id);
+
+                    // Clear registration form
+                    document.getElementById('reg-username').value = '';
+                    document.getElementById('reg-email').value = '';
+                    document.getElementById('reg-password').value = '';
+                    document.getElementById('reg-password-confirm').value = '';
+
+                    showResult(
+                        `✅ Account Created Successfully!<br>
+                        Username: <strong>${username}</strong><br>
+                        Status: <strong>${status}</strong><br>
+                        You are now logged in. Welcome!`,
+                        false
+                    );
+                } else {
+                    showResult("Registration failed: " + (data.error || "Unknown error"), true);
+                }
+            } catch (err) {
+                showResult("Error creating account: " + err.message, true);
+                console.error(err);
+            }
+        }
+
+        // ===== PROFILE COMPLETION =====
+        function showProfileForm() {
+            document.getElementById('profile-form').classList.add('active');
+            document.getElementById('google-section').style.display = 'none';
+            document.getElementById('email-section').style.display = 'none';
+        }
+
+        async function submitProfileForm() {
+            const username = document.getElementById('profile-username').value.trim();
+            const status = document.getElementById('profile-status').value;
+
+            if (!username) {
+                showResult("Please enter a username", true);
+                return;
+            }
+
+            showResult("Saving profile...");
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/auth/google/complete-profile/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        status: status
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('profile-form').classList.remove('active');
+                    showResult(
+                        `✅ Profile Saved Successfully!<br>
+                        Username: <strong>${username}</strong><br>
+                        Status: <strong>${status}</strong><br>
+                        You can now access the portal.`,
+                        false
+                    );
+                    console.log("Profile saved!");
+                } else {
+                    showResult("Failed to save profile: " + (data.error || "Unknown error"), true);
+                }
+            } catch (err) {
+                showResult("Error saving profile: " + err.message, true);
+                console.error(err);
+            }
+        }
+    </script>
+</body>
+</html>

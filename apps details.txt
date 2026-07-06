@@ -1,0 +1,103 @@
+the django backend structure
+
+
+Django Project Structure
+
+
+Project Root
+
+dqa_portal/ → the main Django project (settings, URLs, WSGI/ASGI)
+
+apps/ → folder to hold all modular apps
+
+
+
+
+
+Core Apps (based on the retreat deliverables)
+
+
+authentication/
+
+Handles user accounts, roles (students, lecturers, QA staff, management)
+
+Features: login, signup, access control, permissions
+
+
+
+students/
+
+Models: StudentProfile, StudentComplaint
+
+Functions: student records, complaints submission, feedback tracking
+
+
+
+lecturers/
+
+Models: LecturerProfile, AssessmentReport
+
+Functions: student assessment of lecturers (17 indicators), promotion dossier integration
+
+
+
+
+courses/
+
+Models: Course, LectureSession
+
+Functions: daily lecture monitoring, course outlines, lecture tracking
+
+
+
+
+examinations/
+
+Models: ExamSession, ExamQualityReport
+
+Functions: exam administration quality monitoring, dashboards
+
+
+
+
+qa_committee/
+
+Models: QACReport, AuditDashboard
+
+Functions: QA Committee effectiveness, institutional monitoring
+
+
+
+
+accreditation/
+
+Models: AccreditationReport, AREQuMFramework
+
+Functions: accreditation readiness, standardized reporting templates
+
+
+
+
+documents/
+
+Models: PolicyDocument, OrientationSlides
+
+Functions: digital QA policy storage, institutional documents
+
+
+
+
+
+dashboards/
+
+Functions: unify all dashboards (QAC Audit, Exam Quality, Student Complaints)
+
+Could use Django REST Framework + frontend integration (React/Vue) for real‑time charts
+
+
+
+
+Supporting Apps
+analytics/ → KPI development, report automation, Looker Studio integration
+
+core/ → shared utilities, middleware, logging, data governance & security
