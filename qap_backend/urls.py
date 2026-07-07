@@ -30,6 +30,7 @@ urlpatterns = [
     path("api/examinations/", include("examinations.urls")),
     path('api/accreditation/', include('accreditation.urls')),
     path('api/analytics/', include('analytics.urls')),
+    path('api/dashboards/', include('dashboards.urls')),
     path('api/institutional-documents/', include('documents.urls')),
 
     # Student Feedback

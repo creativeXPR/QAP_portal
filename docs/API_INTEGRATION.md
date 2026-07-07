@@ -442,7 +442,176 @@ Frontend use:
 - Load faculties before creating departments.
 - Load departments before creating courses, exam sessions, or lecturer profiles.
 
-## 5. Courses API
+## 5. Students API
+
+The Students API manages student academic records and student feedback. Student records integrate with core faculties/departments, courses, and authentication users.
+
+Base path:
+
+```text
+/api/students/
+```
+
+Authentication: required.
+
+### Student Permissions
+
+| User role | Access |
+|---|---|
+| admin | Full student record access |
+| principle_officer | Full student record access |
+| focal_person | Create, list, retrieve, update student records |
+| student | Can retrieve/list only their own linked student record |
+| unauthenticated | No access |
+
+Only `admin` and `principle_officer` can delete student records.
+
+### Student Object
+
+| Field | Type | Nullable | Description |
+|---|---|---:|---|
+| id | integer | No | Student record ID |
+| user | integer | Yes | Optional linked authentication user ID |
+| matric_number | string | No | Unique matric number |
+| first_name | string | No | Student first name |
+| last_name | string | No | Student last name |
+| full_name | string | No | Read-only combined name |
+| email | string | No | Unique student email |
+| faculty | integer | No | Faculty ID |
+| faculty_name | string | No | Read-only faculty name |
+| department | integer | No | Department ID |
+| department_name | string | No | Read-only department name |
+| programme | string | No | Programme name |
+| level | string | No | `100`, `200`, `300`, `400`, `500`, or `PG` |
+| status | string | No | `active`, `inactive`, `suspended`, or `graduated` |
+| courses | integer[] | Yes | Course IDs linked to the student |
+| course_codes | string[] | No | Read-only linked course codes |
+| created_at | datetime | No | Created timestamp |
+| updated_at | datetime | No | Updated timestamp |
+
+### Student Endpoints
+
+```http
+GET /api/students/
+POST /api/students/
+GET /api/students/{id}/
+PUT /api/students/{id}/
+PATCH /api/students/{id}/
+DELETE /api/students/{id}/
+```
+
+Create request:
+
+```json
+{
+  "user": 5,
+  "matric_number": "CSC/2026/001",
+  "first_name": "Ada",
+  "last_name": "Lovelace",
+  "email": "ada@student.example.com",
+  "faculty": 1,
+  "department": 3,
+  "programme": "BSc Computer Science",
+  "level": "100",
+  "status": "active",
+  "courses": [10, 11]
+}
+```
+
+Success response:
+
+```json
+{
+  "id": 1,
+  "user": 5,
+  "matric_number": "CSC/2026/001",
+  "first_name": "Ada",
+  "last_name": "Lovelace",
+  "full_name": "Ada Lovelace",
+  "email": "ada@student.example.com",
+  "faculty": 1,
+  "faculty_name": "Faculty of Science",
+  "department": 3,
+  "department_name": "Computer Science",
+  "programme": "BSc Computer Science",
+  "level": "100",
+  "status": "active",
+  "courses": [10, 11],
+  "course_codes": ["CSC 101", "CSC 102"],
+  "created_at": "2026-07-07T10:00:00Z",
+  "updated_at": "2026-07-07T10:00:00Z"
+}
+```
+
+Filters:
+
+```http
+GET /api/students/?faculty=1
+GET /api/students/?department=3
+GET /api/students/?level=100
+GET /api/students/?status=active
+GET /api/students/?courses=10
+GET /api/students/?search=ada
+GET /api/students/?ordering=matric_number
+```
+
+Validation:
+
+- `matric_number` must be unique.
+- `email` must be unique and valid.
+- `faculty` and `department` are required.
+- `department` must belong to the selected `faculty`.
+- Linked `courses` must belong to the selected `department`.
+- `matric_number` may contain only letters, numbers, slash, underscore, and hyphen.
+
+### Student Feedback Endpoints
+
+Existing feedback endpoints remain available:
+
+```http
+GET /api/students/feedback-tracking/
+POST /api/students/feedback-tracking/
+GET /api/students/feedback/
+POST /api/students/feedback/
+GET /api/students/feedback/{id}/
+PUT /api/students/feedback/{id}/
+PATCH /api/students/feedback/{id}/
+DELETE /api/students/feedback/{id}/
+```
+
+Feedback create request:
+
+```json
+{
+  "student": "student_user",
+  "feedback": "Lecture room needs better ventilation.",
+  "category": "complaint",
+  "urgency": "high"
+}
+```
+
+Allowed feedback categories:
+
+```text
+complaint
+suggestion
+inquiry
+academic
+support
+other
+```
+
+Allowed urgency values:
+
+```text
+normal
+high
+critical
+```
+
+Feedback status is read-only on create and defaults to `pending`.
+
+## 6. Courses API
 
 Base path:
 
@@ -571,7 +740,7 @@ Frontend use:
 - Course monitoring form should call this endpoint after user selects course, level, time slot, and enters ratings.
 - If `held=false`, show and require the reason field.
 
-## 6. Examinations API
+## 7. Examinations API
 
 Base path:
 
@@ -708,7 +877,7 @@ Validation:
 - `incident_description` is required when `observed_misconduct=true`.
 - Student is assigned from the logged-in user.
 
-## 7. Lecturers API
+## 8. Lecturers API
 
 Base path:
 
@@ -865,7 +1034,7 @@ Validation:
 - Every indicator rating must be 1 to 5.
 - Student is assigned from the logged-in user.
 
-## 8. Accreditation API
+## 9. Accreditation API
 
 Base path:
 
@@ -1232,7 +1401,7 @@ Example:
 GET /api/accreditation/actions/?cycle=1&component=staffing&status=in_progress
 ```
 
-## 9. Analytics API
+## 10. Analytics API
 
 Base path:
 
@@ -1293,7 +1462,330 @@ Frontend use:
 - Component chart should call component-performance.
 - Alert dashboard should call early-warning.
 
-## 10. Institutional Documents API
+## 11. Dashboards API
+
+The Dashboard API is a read-heavy reporting layer. It does not own operational QA records. It reads from existing modules such as core, accreditation, courses, examinations, documents, students, and analytics, then returns frontend-ready KPI cards, charts, alerts, and recent activity.
+
+Base path:
+
+```text
+/api/dashboards/
+```
+
+Authentication: required.
+
+Permissions:
+
+- `admin`, `principle_officer`, `focal_person`, Django staff, and Django superusers can access dashboards.
+- Expanded dashboard roles such as `dqa_admin`, `super_admin`, `qa_focal_person`, `committee_*`, `department_admin`, `faculty_admin`, and `read_only_viewer` are recognized if assigned in the profile status field.
+- `department_admin` must pass a matching `department_id` filter tied to their linked student record.
+- `faculty_admin` must pass a matching `faculty_id` filter tied to their linked student record.
+- Normal `student` users are blocked from management dashboards.
+
+### Common Query Parameters
+
+All dashboard endpoints support these filters where the source data has compatible fields:
+
+| Parameter | Description |
+|---|---|
+| faculty_id | Filter by core faculty ID |
+| department_id | Filter by core department ID |
+| programme_id | Filter by programme name/id where available |
+| committee_id | Reserved for QA committee data |
+| start_date | Start date in `YYYY-MM-DD` |
+| end_date | End date in `YYYY-MM-DD` |
+| period | `this_week`, `this_month`, `this_quarter`, or `this_year` |
+| status | Filter by status where supported |
+| risk_level | Accreditation risk classification |
+| severity | Alert severity |
+| limit | Activity/feed limit. Default `20`, maximum `100` |
+
+### Response Shape
+
+Dashboard endpoints use a consistent wrapper:
+
+```json
+{
+  "success": true,
+  "message": "Dashboard data fetched successfully.",
+  "data": {}
+}
+```
+
+When a dependency is not implemented or unavailable, the endpoint returns a safe module status instead of a server error:
+
+```json
+{
+  "module": "qa_committee",
+  "status": "module_not_available",
+  "message": "QA committee data is not available because the qa_committee module has no installed data models.",
+  "data": []
+}
+```
+
+### Dashboard Endpoints
+
+```http
+GET /api/dashboards/summary/
+GET /api/dashboards/university-overview/
+GET /api/dashboards/accreditation/
+GET /api/dashboards/qa-committee/
+GET /api/dashboards/teaching-learning/
+GET /api/dashboards/examinations/
+GET /api/dashboards/documents/
+GET /api/dashboards/student-experience/
+GET /api/dashboards/infrastructure-labs/
+GET /api/dashboards/research/
+GET /api/dashboards/early-warning/
+GET /api/dashboards/activity-feed/
+```
+
+### Summary Dashboard
+
+Use this endpoint for the frontend landing dashboard:
+
+```http
+GET /api/dashboards/summary/
+```
+
+Returns:
+
+- `kpi_cards`
+- `charts`
+- `alerts`
+- `recent_activity`
+- `quick_links`
+
+Example response:
+
+```json
+{
+  "success": true,
+  "message": "Dashboard data fetched successfully.",
+  "data": {
+    "filters": {
+      "faculty_id": null,
+      "department_id": null,
+      "programme_id": null,
+      "start_date": null,
+      "end_date": null
+    },
+    "kpi_cards": [
+      {
+        "key": "average_pari",
+        "label": "Average PARI Score",
+        "value": 82.0,
+        "unit": "%",
+        "status": "good",
+        "change": null
+      }
+    ],
+    "charts": {
+      "risk_distribution": {
+        "type": "pie",
+        "labels": ["accreditation_ready", "moderate_risk", "high_risk"],
+        "datasets": [
+          {
+            "label": "Programmes",
+            "data": [1, 0, 0]
+          }
+        ]
+      }
+    },
+    "alerts": [],
+    "recent_activity": [],
+    "quick_links": []
+  }
+}
+```
+
+### University Overview
+
+```http
+GET /api/dashboards/university-overview/
+```
+
+Returns top-level QA health:
+
+- total faculties
+- total departments
+- total programmes
+- accreditation ready, moderate risk, and high risk programme counts
+- average PARI score
+- active QA committees
+- average QACEI score
+- open critical findings
+- overdue recommendations
+- pending evidence verifications
+- recent accreditation alerts
+- recent QA activities
+
+### Accreditation Dashboard
+
+```http
+GET /api/dashboards/accreditation/
+```
+
+Returns:
+
+- readiness distribution
+- average readiness score
+- PARI scores by programme
+- PARI scores by faculty
+- weakest and strongest accreditation components
+- programmes on watch list
+- programmes at risk
+- trend over time
+- missing or unverified evidence
+
+Chart keys:
+
+```text
+readiness_distribution_pie
+pari_by_programme_bar
+pari_by_faculty_bar
+risk_trend_line
+component_score_radar_or_bar
+```
+
+### QA Committee Dashboard
+
+```http
+GET /api/dashboards/qa-committee/
+```
+
+The current `qa_committee` app has no data models, so this endpoint returns zeroed KPI values and `module_not_available` metadata. It is safe for frontend integration.
+
+### Teaching And Learning Dashboard
+
+```http
+GET /api/dashboards/teaching-learning/
+```
+
+Reads from `courses.Course` and `courses.LectureSession`.
+
+Returns:
+
+- total courses
+- scheduled lectures
+- lectures held
+- average lecture delivery rate
+- lecturer punctuality
+- low-performing departments
+- chart-ready lecture delivery datasets
+
+### Examination Dashboard
+
+```http
+GET /api/dashboards/examinations/
+```
+
+Reads from `examinations.ExamSession` and `examinations.ExamQualityReport`.
+
+Returns:
+
+- total exam sessions
+- quality reports submitted
+- average administration, invigilation, environment, and overall scores
+- malpractice cases
+- malpractice rate
+- unresolved exam issues
+- chart-ready exam datasets
+
+### Documents Dashboard
+
+```http
+GET /api/dashboards/documents/
+```
+
+Reads from institutional documents.
+
+Returns:
+
+- total documents
+- documents by category
+- required, submitted, and missing document counts
+- pending review, approved, and rejected document counts
+- expiring documents
+- document completeness percentage
+- chart-ready document datasets
+
+### Student Experience Dashboard
+
+```http
+GET /api/dashboards/student-experience/
+```
+
+Reads from student feedback records.
+
+Returns:
+
+- total feedback responses
+- total, resolved, and pending complaints
+- complaint resolution rate
+- satisfaction placeholders where no source metric exists yet
+- chart-ready feedback datasets
+
+Private student complaint details are not exposed in dashboard summaries.
+
+### Infrastructure, Laboratory, And Research Dashboards
+
+```http
+GET /api/dashboards/infrastructure-labs/
+GET /api/dashboards/research/
+```
+
+These endpoints read from accreditation component scores where available. If no matching component scores exist, they return zeroed metrics and empty chart datasets.
+
+### Early Warning Dashboard
+
+```http
+GET /api/dashboards/early-warning/
+```
+
+Returns:
+
+- accreditation secure, watch list, and risk counts
+- high-risk programmes
+- high-risk departments
+- risk drivers
+- recent alerts
+- alert severity distribution
+- recommended corrective actions
+- risk charts
+
+### Activity Feed
+
+```http
+GET /api/dashboards/activity-feed/?limit=20
+```
+
+Returns a list of recent QA activities from available modules.
+
+Example item:
+
+```json
+{
+  "id": "alert-1",
+  "type": "accreditation_alert",
+  "title": "Staffing below benchmark",
+  "description": "BSc Computer Science",
+  "module": "accreditation",
+  "severity": "critical",
+  "created_at": "2026-07-07T10:00:00Z",
+  "actor": null
+}
+```
+
+Frontend integration notes:
+
+- Use `/api/dashboards/summary/` for the landing dashboard.
+- Use `/api/dashboards/accreditation/` for accreditation charts.
+- Use `/api/dashboards/qa-committee/` for committee performance placeholders until the QA committee module has data models.
+- Use `/api/dashboards/early-warning/` for risk monitoring.
+- The frontend should render dashboard values returned by the API instead of recalculating institutional metrics.
+
+## 12. Institutional Documents API
 
 Base path:
 
@@ -1494,7 +1986,7 @@ Example:
 GET /api/institutional-documents/documents/?status=published&search=policy
 ```
 
-## 11. Pagination
+## 13. Pagination
 
 Implemented custom pagination envelopes:
 
@@ -1516,7 +2008,7 @@ Maximum page size:
 
 Plain DRF modules currently do not define custom pagination in this project.
 
-## 12. Error Handling Reference
+## 14. Error Handling Reference
 
 | Status | Cause | Frontend Handling |
 |---:|---|---|
@@ -1549,7 +2041,7 @@ Plain DRF validation example:
 }
 ```
 
-## 13. Rate Limits
+## 15. Rate Limits
 
 No rate limiting is implemented in the current project.
 
@@ -1559,7 +2051,7 @@ Frontend retry recommendation:
 - Retry network failures only after user confirmation or a short debounce.
 - Avoid retrying file uploads automatically unless the user confirms.
 
-## 14. Complete Frontend Workflows
+## 16. Complete Frontend Workflows
 
 ### Login Flow
 
@@ -1634,7 +2126,7 @@ Access log is created
 New versions can be uploaded later
 ```
 
-## 15. Testing Examples
+## 17. Testing Examples
 
 ### cURL Login
 
@@ -1702,7 +2194,7 @@ const response = await fetch("http://127.0.0.1:8000/api/institutional-documents/
 
 Do not manually set `Content-Type` for browser multipart requests; the browser will add the boundary.
 
-## 16. Integration Checklist
+## 18. Integration Checklist
 
 - Base URL is configured.
 - Login flow stores JWT access token.
@@ -1723,7 +2215,7 @@ Do not manually set `Content-Type` for browser multipart requests; the browser w
 - Document workflow buttons are shown based on status and role.
 - Accreditation calculation buttons are shown only to permitted users.
 
-## 17. Known Limitations
+## 19. Known Limitations
 
 - No explicit API versioning is implemented.
 - No rate limiting is implemented.
@@ -1736,7 +2228,7 @@ Do not manually set `Content-Type` for browser multipart requests; the browser w
 - Public file serving configuration for production is not included in this repository.
 - `DEBUG=True` in local settings means unhandled server errors can render Django debug HTML during development.
 
-## 18. Demo Data For Local Testing
+## 20. Demo Data For Local Testing
 
 The local database has been seeded with:
 
