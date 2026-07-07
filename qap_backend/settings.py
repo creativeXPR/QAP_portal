@@ -61,8 +61,6 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
-
-    'django_ngrok', # For local testing with ngrok
 ]
 
 MIDDLEWARE = [
@@ -211,8 +209,6 @@ LOGGING = {
         },
     },
 }
-
-NGROK_AUTHTOKEN = '2osf7vB0cXMIUxwCd3blEeqmGmi_7p2Vxs9P6Nkwmm7w64LX5'
 
 from datetime import timedelta
 

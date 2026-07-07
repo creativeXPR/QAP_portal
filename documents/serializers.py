@@ -21,6 +21,7 @@ class CategorySerializer(serializers.ModelSerializer):
         model = InstitutionalDocumentCategory
         fields = "__all__"
         read_only_fields = ["created_at", "updated_at"]
+        extra_kwargs = {"slug": {"required": False, "allow_blank": True}}
 
 
 class TagSerializer(serializers.ModelSerializer):
