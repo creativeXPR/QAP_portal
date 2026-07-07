@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from google.auth.transport import requests
 from google.oauth2 import id_token
 from .models import Profile
@@ -109,18 +110,18 @@ class RegistrationView(APIView):
 
         try:
             # Create user
-            user = User.objects.create_user(
-                username=username,
-                email=email,
-                password=password,
-            )
+            with transaction.atomic():
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                )
 
-            # Create profile with chosen status (profile_complete=True since status was chosen during signup)
-            profile = Profile.objects.create(
-                user=user,
-                status=status_choice,
-                profile_complete=True,
-            )
+                # The Profile post_save signal may already create this row.
+                profile, _ = Profile.objects.get_or_create(user=user)
+                profile.status = status_choice
+                profile.profile_complete = True
+                profile.save()
 
             logger.info(f"New user registered: {email} with status {status_choice}")
 
