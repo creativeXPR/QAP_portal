@@ -3,6 +3,7 @@ from django.db import models
 # Create your models here.
 class StudentFeedback(models.Model):
     student_name = models.CharField(max_length=100)
+    student_email = models.EmailField(default='', blank=True, null=True)
     feedback_text = models.TextField()
     category = models.CharField(max_length=50) # complaint, suggestion, inquiry, etc.
     status = models.CharField(max_length=20, default='pending') # pending, in_progress, resolved

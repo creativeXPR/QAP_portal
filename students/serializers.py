@@ -8,5 +8,5 @@ class StudentFeedbackSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentFeedback
-        fields = ["id", "student", "feedback", "category", "status", "urgency", "submitted_at"]
+        fields = ["id", "student", "student_email", "feedback", "category", "status", "urgency", "submitted_at"]
         read_only_fields = ["id", "status", "submitted_at"]

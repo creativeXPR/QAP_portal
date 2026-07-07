@@ -124,6 +124,7 @@ if __name__ == "__main__":
         token=access_token,
         feedback_data={
             "student": "demo_user",
+            "student_email": "demo_user@example.com",
             "feedback": "This is a test feedback.",
             "category": "complaint",
             "urgency": "normal"
