@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'accreditation',
     'analytics',
     'documents',
+    'students',
     'corsheaders',
 
     # Third-Party Apps

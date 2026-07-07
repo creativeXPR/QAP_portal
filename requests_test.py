@@ -101,16 +101,32 @@ def run_auth_flow(username, email, password, status="student"):
     else:
         print("No access token received; skipping profile completion test.")
 
+def run_student_feedback_flow(token, feedback_data):
+    print("Testing student feedback submission...")
+    _, feedback_body = call_api("post", "/api/students/feedback-tracking/", feedback_data, token=token)
+
+    if isinstance(feedback_body, dict):
+        print("Feedback submission response:", feedback_body)
+    else:
+        print("Feedback submission failed or returned unexpected response.")
 
 if __name__ == "__main__":
-    # test_login(
-    #     identifier="demo_user",
-    #     password="StrongPass123!",
-    # )
-    run_auth_flow(
-        username="demo_user2",
-        email="demo@example.com",
+    _, login_body = test_login(
+        identifier="demo_user",
         password="StrongPass123!",
-        status="student",
+    )
+    access_token = login_body.get("access") if isinstance(login_body, dict) else None
+
+    if not access_token:
+        raise SystemExit("No access token returned from login.")
+
+    run_student_feedback_flow(
+        token=access_token,
+        feedback_data={
+            "student": "demo_user",
+            "feedback": "This is a test feedback.",
+            "category": "complaint",
+            "urgency": "normal"
+        }
     )
 

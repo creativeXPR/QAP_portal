@@ -31,4 +31,7 @@ urlpatterns = [
     path('api/analytics/', include('analytics.urls')),
     path('api/institutional-documents/', include('documents.urls')),
 
+    # Student Feedback
+    path('api/students/', include('students.urls')),
+
 ]
