@@ -185,6 +185,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5500",
     "http://localhost:5173",
     "http://192.168.227.193:5173",
+    "https://qap-portal.fly.dev",
     # "https://32b2-102-89-68-171.ngrok-free.app/",
 ]
 
