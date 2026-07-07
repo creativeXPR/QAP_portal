@@ -126,6 +126,7 @@ class StudentFeedbackSerializer(serializers.ModelSerializer):
             "classification",
             "status",
             "urgency",
+            "submission_mode",
             "admin_comment",
             "assigned_to",
             "assigned_to_username",

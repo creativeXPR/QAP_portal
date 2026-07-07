@@ -83,16 +83,21 @@ class StudentFeedback(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         UNDER_REVIEW = "under_review", "Under Review"
-        IN_PROGRESS = "in_progress", "In Progress"
-        AWAITING_STUDENT_RESPONSE = "awaiting_student_response", "Awaiting Student Response"
+        # IN_PROGRESS = "in_progress", "In Progress"
+        # AWAITING_STUDENT_RESPONSE = "awaiting_student_response", "Awaiting Student Response"
         RESOLVED = "resolved", "Resolved"
-        CLOSED = "closed", "Closed"
-        REJECTED = "rejected", "Rejected"
+        # CLOSED = "closed", "Closed"
+        # REJECTED = "rejected", "Rejected"
 
     class Urgency(models.TextChoices):
         NORMAL = "normal", "Normal"
         HIGH = "high", "High"
         CRITICAL = "critical", "Critical"
+
+    class SubmissionMode(models.TextChoices):
+        Anonymous = "anonymous", "Anonymous"
+        CONFIDENTIAL = "confidential", "Confidential"
+        OPEN_IDENTITY = "open_identity", "Open_Identity"
 
     submitted_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -108,6 +113,7 @@ class StudentFeedback(models.Model):
     classification = models.CharField(max_length=50, choices=Classification.choices, default=Classification.ACADEMIC)
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING)
     urgency = models.CharField(max_length=20, choices=Urgency.choices, default=Urgency.NORMAL)
+    submission_mode = models.CharField(max_length=50, choices=SubmissionMode.choices, default=SubmissionMode.OPEN_IDENTITY, blank=True)
     admin_comment = models.TextField(blank=True)
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,

@@ -128,7 +128,8 @@ if __name__ == "__main__":
             "feedback": "This is a test feedback.",
             "category": "complaint",
             "classification": "academic",
-            "urgency": "normal"
+            "urgency": "normal",
+            "submission_mode": "open_identity"
         }
     )
 
