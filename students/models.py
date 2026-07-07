@@ -73,6 +73,13 @@ class StudentFeedback(models.Model):
         SUPPORT = "support", "Support"
         OTHER = "other", "Other"
 
+    class Classification(models.TextChoices):
+        ACADEMIC = "academic", "Academic"
+        ADMINISTRATIVE = "administrative", "Administrative"
+        FACILITY = "facility", "Facility"
+        WELFARE = "welfare", "Welfare"
+        OTHER = "other", "Other"
+
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         IN_PROGRESS = "in_progress", "In Progress"
@@ -91,8 +98,10 @@ class StudentFeedback(models.Model):
         on_delete=models.SET_NULL,
     )
     student_name = models.CharField(max_length=100)
+    student_email = models.EmailField(default="", blank=True, null=True)
     feedback_text = models.TextField()
     category = models.CharField(max_length=50, choices=Category.choices)
+    classification = models.CharField(max_length=50, choices=Classification.choices, default=Classification.ACADEMIC)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     urgency = models.CharField(max_length=20, choices=Urgency.choices, default=Urgency.NORMAL)
     submitted_at = models.DateTimeField(auto_now_add=True)

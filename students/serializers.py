@@ -1,4 +1,5 @@
 from rest_framework import serializers
+
 from .models import Student, StudentFeedback
 
 
@@ -68,8 +69,10 @@ class StudentFeedbackSerializer(serializers.ModelSerializer):
             "submitted_by",
             "submitted_by_username",
             "student",
+            "student_email",
             "feedback",
             "category",
+            "classification",
             "status",
             "urgency",
             "submitted_at",
