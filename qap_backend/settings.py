@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     'analytics',
     'documents',
     'students',
+    'dashboards',
+    'qa_committee',
     'corsheaders',
 
     # Third-Party Apps
