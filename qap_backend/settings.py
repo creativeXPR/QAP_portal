@@ -41,6 +41,9 @@ INSTALLED_APPS = [
 
     # Custom App
     'authentication',
+    'accreditation',
+    'analytics',
+    'documents',
     'corsheaders',
 
     # Third-Party Apps
