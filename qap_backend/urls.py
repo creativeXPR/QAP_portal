@@ -24,4 +24,11 @@ urlpatterns = [
     path('api/auth/', include('dj_rest_auth.urls')),
     path('api/auth/registration/', include('dj_rest_auth.registration.urls')),
     path('api/auth/google/', include('authentication.urls')), # Points to our app
+    path("api/courses/", include("courses.urls")),
+    path("api/lecturers/", include("lecturers.urls")),
+    path("api/examinations/", include("examinations.urls")),
+    path('api/accreditation/', include('accreditation.urls')),
+    path('api/analytics/', include('analytics.urls')),
+    path('api/institutional-documents/', include('documents.urls')),
+
 ]
