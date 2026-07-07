@@ -1,10 +1,13 @@
-from rest_framework import viewsets, permissions, filters
+from collections import defaultdict
+
+from django.db.models import Avg
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import LecturerProfile, AssessmentReport
-from .serializers import LecturerProfileSerializer, AssessmentReportSerializer
+from rest_framework import filters, permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Avg
+
+from .models import AssessmentReport, LecturerProfile
+from .serializers import AssessmentReportSerializer, LecturerProfileSerializer
 
 
 class LecturerProfileViewSet(viewsets.ModelViewSet):
@@ -13,7 +16,7 @@ class LecturerProfileViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter]
     search_fields = ["user__username", "staff_id"]
-    
+
     @action(detail=True, methods=["get"])
     def assessment_summary(self, request, pk=None):
         lecturer = self.get_object()
@@ -25,14 +28,18 @@ class LecturerProfileViewSet(viewsets.ModelViewSet):
         }
         if reports.exists():
             indicator_fields = reports.model.INDICATOR_FIELDS
-            avg_expr = {f: Avg(f) for f in indicator_fields}
+            avg_expr = {field: Avg(field) for field in indicator_fields}
             per_indicator = reports.aggregate(**avg_expr)
             overall = sum(per_indicator.values()) / len(per_indicator)
             summary["overall_average"] = round(overall, 2)
-            summary["by_course"] = list(
-                reports.values("course__code")
-                .annotate(avg=Avg("teaches_class_regularly"))  # placeholder — needs proper per-course rollup
-            )
+
+            course_scores = defaultdict(list)
+            for report in reports.select_related("course"):
+                course_scores[report.course.code].append(report.average_rating)
+            summary["by_course"] = [
+                {"course__code": course_code, "avg": round(sum(scores) / len(scores), 2)}
+                for course_code, scores in sorted(course_scores.items())
+            ]
         return Response(summary)
 
 

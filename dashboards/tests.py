@@ -1,7 +1,9 @@
 from datetime import timedelta
+from io import StringIO
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils import timezone
@@ -20,8 +22,10 @@ from core.models import Department, Faculty
 from courses.models import Course, LectureSession
 from documents.models import InstitutionalDocument, InstitutionalDocumentCategory
 from examinations.models import ExamQualityReport, ExamSession
-from students.models import Student, StudentFeedback
+from qa_committee.models import QACommittee
+from students.models import Student, StudentFeedback, StudentNotification
 
+from .permissions import DASHBOARD_ROLES
 from .services import percentage
 
 
@@ -207,9 +211,24 @@ class DashboardApiTests(TestCase):
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.data["data"]["status"], "module_not_available")
 
-    def test_qa_committee_dashboard_returns_missing_module_status(self):
+    def test_qa_committee_dashboard_returns_available_module_status(self):
+        QACommittee.objects.create(
+            name="Science QA Committee",
+            scope_type="faculty",
+            faculty=self.faculty,
+            date_constituted=timezone.localdate(),
+            created_by=self.admin,
+        )
         self.authenticate_admin()
         response = self.client.get("/api/dashboards/qa-committee/")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["data"]["module_status"]["status"], "available")
+        self.assertEqual(response.data["data"]["active_committees"], 1)
+
+    def test_qa_committee_dashboard_handles_missing_module(self):
+        self.authenticate_admin()
+        with patch("dashboards.services.safe_model_import", return_value=None):
+            response = self.client.get("/api/dashboards/qa-committee/")
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.data["data"]["module_status"]["status"], "module_not_available")
 
@@ -299,3 +318,69 @@ class DashboardApiTests(TestCase):
 
     def test_percentage_helper_handles_denominator_zero(self):
         self.assertEqual(percentage(10, 0), 0)
+
+    def test_all_dashboard_roles_have_expected_access_edges(self):
+        for role in sorted(DASHBOARD_ROLES):
+            user = get_user_model().objects.create_user(username=f"{role}_user", password="password")
+            user.profile.status = role
+            user.profile.save()
+
+            if role == "department_admin":
+                Student.objects.create(
+                    user=user,
+                    faculty=self.faculty,
+                    department=self.department,
+                    matric_number=f"CSC/ROLE/{role[:3].upper()}",
+                    first_name="Role",
+                    last_name="User",
+                    email=f"{role}@student.example.com",
+                    programme="BSc Computer Science",
+                    level="400",
+                )
+                url = f"/api/dashboards/summary/?department_id={self.department.id}"
+            elif role == "faculty_admin":
+                Student.objects.create(
+                    user=user,
+                    faculty=self.faculty,
+                    department=self.department,
+                    matric_number=f"CSC/ROLE/{role[:3].upper()}",
+                    first_name="Role",
+                    last_name="User",
+                    email=f"{role}@student.example.com",
+                    programme="BSc Computer Science",
+                    level="400",
+                )
+                url = f"/api/dashboards/summary/?faculty_id={self.faculty.id}"
+            else:
+                url = "/api/dashboards/summary/"
+
+            with self.subTest(role=role):
+                self.client.force_authenticate(user)
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200, response.data)
+
+        unknown = get_user_model().objects.create_user(username="unknown_role_user", password="password")
+        unknown.profile.status = "unknown_role"
+        unknown.profile.save()
+        self.client.force_authenticate(unknown)
+        response = self.client.get("/api/dashboards/summary/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_demo_seed_command_is_idempotent_and_populates_dashboard_sources(self):
+        output = StringIO()
+        call_command("seed_dashboard_demo_data", stdout=output)
+        call_command("seed_dashboard_demo_data", stdout=StringIO())
+
+        self.assertIn("Dashboard demo data seeded successfully", output.getvalue())
+        self.assertTrue(PARIResult.objects.filter(programme="BSc Computer Science").exists())
+        self.assertTrue(QACommittee.objects.filter(name="Faculty of Science QA Committee").exists())
+        self.assertTrue(StudentNotification.objects.filter(title="Complaint Updated").exists())
+        self.assertTrue(InstitutionalDocument.objects.filter(slug="demo-quality-assurance-policy").exists())
+
+        demo_admin = get_user_model().objects.get(username="demo_admin")
+        self.client.force_authenticate(demo_admin)
+        response = self.client.get("/api/dashboards/summary/")
+        self.assertEqual(response.status_code, 200, response.data)
+        keys = {item["key"] for item in response.data["data"]["kpi_cards"]}
+        self.assertIn("average_pari", keys)
+        self.assertIn("active_qa_committees", keys)

@@ -42,6 +42,7 @@ class StudentFeedbackPermission(BasePermission):
         role = role_for(request.user)
         if role in MANAGER_ROLES:
             return True
+        owner_id = getattr(obj, "submitted_by_id", None) or getattr(obj, "user_id", None)
         if request.method in SAFE_METHODS:
-            return obj.submitted_by_id == request.user.id
-        return False
+            return owner_id == request.user.id
+        return owner_id == request.user.id and getattr(view, "action", None) == "mark_read"

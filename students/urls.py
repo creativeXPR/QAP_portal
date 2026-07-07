@@ -1,11 +1,12 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import StudentFeedbackViewSet, StudentViewSet
+from .views import StudentFeedbackViewSet, StudentNotificationViewSet, StudentViewSet
 
 
 router = DefaultRouter()
 router.register(r"feedback", StudentFeedbackViewSet, basename="feedback")
+router.register(r"notifications", StudentNotificationViewSet, basename="student-notification")
 
 student_list = StudentViewSet.as_view({"get": "list", "post": "create"})
 student_detail = StudentViewSet.as_view(

@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 from core.models import Department, Faculty
 from courses.models import Course
 
-from .models import Student, StudentFeedback
+from .models import Student, StudentFeedback, StudentFeedbackUpdate, StudentNotification
 from .serializers import StudentFeedbackSerializer
 
 
@@ -208,6 +208,7 @@ class StudentFeedbackApiTests(TestCase):
         self.assertEqual(response.status_code, 201, response.data)
         feedback = StudentFeedback.objects.get()
         self.assertEqual(feedback.submitted_by, self.user)
+        self.assertEqual(feedback.status, StudentFeedback.Status.PENDING)
         self.assertEqual(response.data["submitted_by"], self.user.id)
 
         invalid_response = self.client.post(
@@ -249,3 +250,114 @@ class StudentFeedbackApiTests(TestCase):
         admin_response = self.client.get("/api/students/feedback/")
         self.assertEqual(admin_response.status_code, 200)
         self.assertEqual(len(admin_response.data), 2)
+
+    def test_admin_update_creates_complaint_timeline_and_student_notification(self):
+        complaint = StudentFeedback.objects.create(
+            submitted_by=self.user,
+            student_name="student_user",
+            feedback_text="The lecture room needs repair.",
+            category="complaint",
+        )
+        self.client.force_authenticate(self.admin)
+
+        response = self.client.patch(
+            f"/api/students/feedback/{complaint.id}/",
+            {
+                "status": "under_review",
+                "admin_comment": "We are reviewing this with the department.",
+                "assigned_to": self.admin.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.data)
+        complaint.refresh_from_db()
+        self.assertEqual(complaint.status, StudentFeedback.Status.UNDER_REVIEW)
+        self.assertEqual(complaint.admin_comment, "We are reviewing this with the department.")
+        self.assertEqual(complaint.updated_by, self.admin)
+        self.assertEqual(StudentFeedbackUpdate.objects.filter(complaint=complaint).count(), 1)
+        notification = StudentNotification.objects.get(complaint=complaint)
+        self.assertEqual(notification.user, self.user)
+        self.assertFalse(notification.is_read)
+        self.assertEqual(notification.title, "Complaint Updated")
+        self.assertIn("Under Review", notification.message)
+        self.assertEqual(response.data["updates"][0]["new_status"], "under_review")
+        self.assertEqual(response.data["notification_history"][0]["title"], "Complaint Updated")
+
+        self.client.force_authenticate(self.user)
+        list_response = self.client.get("/api/students/notifications/")
+        self.assertEqual(list_response.status_code, 200, list_response.data)
+        self.assertEqual(len(list_response.data), 1)
+
+        mark_read_response = self.client.post(f"/api/students/notifications/{notification.id}/mark-read/")
+        self.assertEqual(mark_read_response.status_code, 200, mark_read_response.data)
+        notification.refresh_from_db()
+        self.assertTrue(notification.is_read)
+
+    def test_student_cannot_set_admin_complaint_fields(self):
+        self.client.force_authenticate(self.user)
+
+        response = self.client.post(
+            "/api/students/feedback-tracking/",
+            {
+                "student": "student_user",
+                "feedback": "I want to close this myself.",
+                "category": "complaint",
+                "status": "resolved",
+                "admin_comment": "Not allowed",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("status", response.data)
+        self.assertIn("admin_comment", response.data)
+
+    def test_complaint_update_permission_edges_by_role(self):
+        manager_roles = ["admin", "principle_officer", "focal_person"]
+        blocked_roles = ["student", "department_admin", "faculty_admin", "committee_member", "read_only_viewer", "unknown_role"]
+
+        for role in manager_roles:
+            complaint = StudentFeedback.objects.create(
+                submitted_by=self.user,
+                student_name=f"{role}_complainant",
+                feedback_text="Complaint requiring staff update.",
+                category="complaint",
+            )
+            staff = get_user_model().objects.create_user(username=f"{role}_staff", password="password")
+            staff.profile.status = role
+            staff.profile.save()
+            self.client.force_authenticate(staff)
+
+            with self.subTest(role=role, expected="can_update"):
+                response = self.client.patch(
+                    f"/api/students/feedback/{complaint.id}/",
+                    {"status": "in_progress", "admin_comment": f"Handled by {role}."},
+                    format="json",
+                )
+                self.assertEqual(response.status_code, 200, response.data)
+                self.assertTrue(StudentNotification.objects.filter(complaint=complaint, user=self.user).exists())
+
+        for role in blocked_roles:
+            complaint = StudentFeedback.objects.create(
+                submitted_by=self.user,
+                student_name=f"{role}_complainant",
+                feedback_text="Complaint requiring restricted update.",
+                category="complaint",
+            )
+            actor = get_user_model().objects.create_user(username=f"{role}_actor", password="password")
+            actor.profile.status = role
+            actor.profile.save()
+            self.client.force_authenticate(actor)
+
+            with self.subTest(role=role, expected="blocked_update"):
+                response = self.client.patch(
+                    f"/api/students/feedback/{complaint.id}/",
+                    {"status": "resolved", "admin_comment": "Should not be allowed."},
+                    format="json",
+                )
+                self.assertIn(response.status_code, [403, 404])
+
+        self.client.force_authenticate(self.user)
+        own_response = self.client.get("/api/students/feedback/")
+        self.assertEqual(own_response.status_code, 200)

@@ -29,7 +29,6 @@ class FlexibleLoginView(APIView):
         password = request.data.get('password')
 
         identifier_m = identifier.replace(" ", "_") if identifier else None  # Remove spaces from identifier
-        print(f"Login attempt with identifier: {identifier_m}")
         if not identifier_m or not password:
             return Response(
                 {'error': 'username and password are required'},
@@ -58,6 +57,7 @@ class FlexibleLoginView(APIView):
                     'username': user.username.replace("_", " "),  # Replace underscores with spaces for display
                     'email': user.email,
                     'status': profile.status,
+                    'full_name': user.get_full_name() or user.username.replace("_", " "),
                     'first_name': user.first_name,
                     'last_name': user.last_name,
                 },
@@ -75,11 +75,8 @@ class RegistrationView(APIView):
         password = request.data.get('password')
         password_confirm = request.data.get('password_confirm')
         status_choice = request.data.get('status', 'student')
-        first_name = request.data.get('first_name', request.data.get('firstname', ''))
-        last_name = request.data.get('last_name', request.data.get('lastname', ''))
 
         username_m = username.replace(" ", "_") if username else None  # Remove spaces from username
-        print(f"Registration attempt with username: {username_m}, email: {email}, status: {status_choice}")
         # Validation
         if not username_m or not email or not password or not password_confirm:
             return Response(
@@ -122,8 +119,6 @@ class RegistrationView(APIView):
                     username=username_m,
                     email=email,
                     password=password,
-                    first_name=first_name,
-                    last_name=last_name,
                 )
 
                 # The Profile post_save signal may already create this row.
@@ -147,8 +142,7 @@ class RegistrationView(APIView):
                         'id': user.id,
                         'username': user.username.replace("_", " "),  # Replace underscores with spaces for display
                         'email': user.email,
-                        'first_name': user.first_name,
-                        'last_name': user.last_name,
+                        'full_name': user.get_full_name() or user.username.replace("_", " "),
                     },
                 },
                 status=status.HTTP_201_CREATED,
@@ -252,8 +246,6 @@ def complete_profile(request):
         status_choice = request.data.get('status')
 
         username_m = username.replace(" ", "_") if username else None  # Remove spaces from username
-
-        print(f"Complete profile request - User: {user.email}, Username: {username_m}, Status: {status_choice}")
 
         logger.info(f"Complete profile request - User: {user.email}, Username: {username_m}, Status: {status_choice}")
 

@@ -16,22 +16,19 @@ class RegistrationTests(TestCase):
                 "password": "StrongPass123!",
                 "password_confirm": "StrongPass123!",
                 "status": "admin",
-                "first_name": "DQA",
-                "last_name": "Admin",
             },
             format="json",
         )
 
         self.assertEqual(response.status_code, 201, response.data)
         user = get_user_model().objects.get(username="dqa_admin")
-        self.assertEqual(user.first_name, "DQA")
-        self.assertEqual(user.last_name, "Admin")
+        self.assertEqual(user.first_name, "")
+        self.assertEqual(user.last_name, "")
         self.assertEqual(Profile.objects.filter(user=user).count(), 1)
         self.assertEqual(user.profile.status, "admin")
         self.assertTrue(user.profile.profile_complete)
         self.assertIn("access", response.data)
-        self.assertEqual(response.data["user"]["first_name"], "DQA")
-        self.assertEqual(response.data["user"]["last_name"], "Admin")
+        self.assertEqual(response.data["user"]["full_name"], "dqa admin")
 
         login_response = client.post(
             "/api/auth/login/",
@@ -40,5 +37,6 @@ class RegistrationTests(TestCase):
         )
 
         self.assertEqual(login_response.status_code, 200, login_response.data)
-        self.assertEqual(login_response.data["user"]["first_name"], "DQA")
-        self.assertEqual(login_response.data["user"]["last_name"], "Admin")
+        self.assertEqual(login_response.data["user"]["full_name"], "dqa admin")
+        self.assertEqual(login_response.data["user"]["first_name"], "")
+        self.assertEqual(login_response.data["user"]["last_name"], "")

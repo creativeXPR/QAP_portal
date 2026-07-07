@@ -82,8 +82,12 @@ class StudentFeedback(models.Model):
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
+        UNDER_REVIEW = "under_review", "Under Review"
         IN_PROGRESS = "in_progress", "In Progress"
+        AWAITING_STUDENT_RESPONSE = "awaiting_student_response", "Awaiting Student Response"
         RESOLVED = "resolved", "Resolved"
+        CLOSED = "closed", "Closed"
+        REJECTED = "rejected", "Rejected"
 
     class Urgency(models.TextChoices):
         NORMAL = "normal", "Normal"
@@ -102,12 +106,81 @@ class StudentFeedback(models.Model):
     feedback_text = models.TextField()
     category = models.CharField(max_length=50, choices=Category.choices)
     classification = models.CharField(max_length=50, choices=Classification.choices, default=Classification.ACADEMIC)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING)
     urgency = models.CharField(max_length=20, choices=Urgency.choices, default=Urgency.NORMAL)
+    admin_comment = models.TextField(blank=True)
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        related_name="assigned_student_feedback",
+        on_delete=models.SET_NULL,
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        related_name="updated_student_feedback",
+        on_delete=models.SET_NULL,
+    )
     submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-submitted_at"]
 
     def __str__(self):
         return f"Feedback from {self.student_name} at {self.submitted_at}"
+
+
+class StudentFeedbackUpdate(models.Model):
+    complaint = models.ForeignKey(StudentFeedback, related_name="updates", on_delete=models.CASCADE)
+    previous_status = models.CharField(max_length=30, choices=StudentFeedback.Status.choices, blank=True)
+    new_status = models.CharField(max_length=30, choices=StudentFeedback.Status.choices)
+    admin_comment = models.TextField(blank=True)
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        related_name="student_feedback_assignment_updates",
+        on_delete=models.SET_NULL,
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        related_name="student_feedback_updates",
+        on_delete=models.SET_NULL,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.complaint_id}: {self.previous_status} -> {self.new_status}"
+
+
+class StudentNotification(models.Model):
+    class NotificationType(models.TextChoices):
+        COMPLAINT_UPDATE = "complaint_update", "Complaint Update"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="student_notifications", on_delete=models.CASCADE)
+    complaint = models.ForeignKey(
+        StudentFeedback,
+        null=True,
+        blank=True,
+        related_name="notifications",
+        on_delete=models.CASCADE,
+    )
+    title = models.CharField(max_length=160)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=40, choices=NotificationType.choices, default=NotificationType.COMPLAINT_UPDATE)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.title} for {self.user}"

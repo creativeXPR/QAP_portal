@@ -232,6 +232,21 @@ def _qa_committee_unavailable():
     )
 
 
+def _qa_committee_metrics():
+    QACommittee = safe_model_import("qa_committee", "QACommittee")
+    if QACommittee is None:
+        return None
+    from qa_committee.services import get_committee_effectiveness_score
+
+    committees = QACommittee.objects.all()
+    qacei_scores = [get_committee_effectiveness_score(committee) for committee in committees]
+    return {
+        "committees": committees,
+        "active_count": committees.filter(status="active").count(),
+        "average_qacei_score": round(sum(qacei_scores) / len(qacei_scores), 2) if qacei_scores else 0,
+    }
+
+
 def get_university_overview(filters):
     Faculty = safe_model_import("core", "Faculty")
     Department = safe_model_import("core", "Department")
@@ -239,6 +254,7 @@ def get_university_overview(filters):
     CorrectiveAction = safe_model_import("accreditation", "CorrectiveAction")
     pari = _pari_queryset(filters)
     alerts = _alert_queryset(filters)
+    qa_metrics = _qa_committee_metrics()
 
     pending_evidence = 0
     if Evidence is not None:
@@ -260,8 +276,8 @@ def get_university_overview(filters):
             "programmes_moderate_risk": pari.filter(classification="moderate_risk").count() if pari is not None else 0,
             "programmes_high_risk": pari.filter(classification="high_risk").count() if pari is not None else 0,
             "average_pari_score": _avg(pari, "pari_score") if pari is not None else 0,
-            "active_qa_committees": 0,
-            "average_qacei_score": 0,
+            "active_qa_committees": qa_metrics["active_count"] if qa_metrics else 0,
+            "average_qacei_score": qa_metrics["average_qacei_score"] if qa_metrics else 0,
             "open_critical_findings": alerts.filter(severity="critical").exclude(status="resolved").count() if alerts is not None else 0,
             "overdue_recommendations": overdue_actions,
             "pending_evidence_verifications": pending_evidence,
@@ -271,7 +287,7 @@ def get_university_overview(filters):
         "module_status": {
             "core": "available" if Faculty and Department else "module_not_available",
             "accreditation": "available" if pari is not None else "module_not_available",
-            "qa_committee": "module_not_available",
+            "qa_committee": "available" if qa_metrics else "module_not_available",
         },
     }
     return data
@@ -353,28 +369,74 @@ def get_accreditation_dashboard(filters):
 
 
 def get_qa_committee_dashboard(filters):
+    QACommittee = safe_model_import("qa_committee", "QACommittee")
+    if QACommittee is None:
+        return {
+            "module_status": _qa_committee_unavailable(),
+            "total_committees": 0,
+            "active_committees": 0,
+            "committees_with_meetings_this_quarter": 0,
+            "committees_without_recent_meetings": [],
+            "reports_submitted": 0,
+            "reports_pending": 0,
+            "open_findings": 0,
+            "critical_findings": 0,
+            "recommendations_pending": 0,
+            "recommendations_implemented": 0,
+            "recommendations_overdue": 0,
+            "action_plan_completion_rate": 0,
+            "evidence_pending_verification": 0,
+            "average_qacei_score": 0,
+            "qacei_by_committee": [],
+            "qacei_by_faculty_department": [],
+            "charts": {
+                "qacei_by_committee_bar": build_chart("bar", [], [], "QACEI"),
+                "findings_by_severity_pie": build_chart("pie", SEVERITY_LABELS, [0, 0, 0, 0], "Findings"),
+                "recommendations_by_status_bar": build_chart("bar", ["pending", "implemented", "overdue"], [0, 0, 0], "Recommendations"),
+                "action_plan_completion_trend_line": build_chart("line", [], [], "Completion Rate"),
+            },
+        }
+    from qa_committee.services import get_action_plan_completion_rate, get_committee_effectiveness_score, get_overdue_recommendations
+
+    QAAuditFinding = safe_model_import("qa_committee", "QAAuditFinding")
+    QARecommendation = safe_model_import("qa_committee", "QARecommendation")
+    QAActionEvidence = safe_model_import("qa_committee", "QAActionEvidence")
+    QACommitteeReport = safe_model_import("qa_committee", "QACommitteeReport")
+    CommitteeMeeting = safe_model_import("qa_committee", "CommitteeMeeting")
+    committees = QACommittee.objects.select_related("faculty", "department").all()
+    qacei_rows = [
+        {"committee": committee.name, "committee_id": committee.id, "qacei_score": get_committee_effectiveness_score(committee)}
+        for committee in committees
+    ]
+    severity_counts = {label: QAAuditFinding.objects.filter(severity=label).count() if QAAuditFinding else 0 for label in SEVERITY_LABELS}
+    recommendation_statuses = ["pending", "implemented", "overdue"]
+    recommendation_counts = [
+        QARecommendation.objects.filter(status=status_value).count() if QARecommendation else 0
+        for status_value in recommendation_statuses
+    ]
+    average_qacei = round(sum(row["qacei_score"] for row in qacei_rows) / len(qacei_rows), 2) if qacei_rows else 0
     return {
-        "module_status": _qa_committee_unavailable(),
-        "total_committees": 0,
-        "active_committees": 0,
-        "committees_with_meetings_this_quarter": 0,
+        "module_status": {"module": "qa_committee", "status": "available", "message": "QA committee data is available.", "data": []},
+        "total_committees": committees.count(),
+        "active_committees": committees.filter(status="active").count(),
+        "committees_with_meetings_this_quarter": CommitteeMeeting.objects.filter(status="held").count() if CommitteeMeeting else 0,
         "committees_without_recent_meetings": [],
-        "reports_submitted": 0,
-        "reports_pending": 0,
-        "open_findings": 0,
-        "critical_findings": 0,
-        "recommendations_pending": 0,
-        "recommendations_implemented": 0,
-        "recommendations_overdue": 0,
-        "action_plan_completion_rate": 0,
-        "evidence_pending_verification": 0,
-        "average_qacei_score": 0,
-        "qacei_by_committee": [],
-        "qacei_by_faculty_department": [],
+        "reports_submitted": QACommitteeReport.objects.filter(status__in=["submitted", "reviewed", "approved"]).count() if QACommitteeReport else 0,
+        "reports_pending": QACommitteeReport.objects.filter(status="draft").count() if QACommitteeReport else 0,
+        "open_findings": QAAuditFinding.objects.exclude(status__in=["resolved", "dismissed"]).count() if QAAuditFinding else 0,
+        "critical_findings": QAAuditFinding.objects.filter(severity="critical").exclude(status__in=["resolved", "dismissed"]).count() if QAAuditFinding else 0,
+        "recommendations_pending": QARecommendation.objects.filter(status="pending").count() if QARecommendation else 0,
+        "recommendations_implemented": QARecommendation.objects.filter(status__in=["implemented", "verified"]).count() if QARecommendation else 0,
+        "recommendations_overdue": get_overdue_recommendations().count(),
+        "action_plan_completion_rate": get_action_plan_completion_rate(),
+        "evidence_pending_verification": QAActionEvidence.objects.filter(verification_status="pending").count() if QAActionEvidence else 0,
+        "average_qacei_score": average_qacei,
+        "qacei_by_committee": qacei_rows,
+        "qacei_by_faculty_department": list(committees.values("faculty__name", "department__name").annotate(committees=Count("id"))),
         "charts": {
-            "qacei_by_committee_bar": build_chart("bar", [], [], "QACEI"),
-            "findings_by_severity_pie": build_chart("pie", SEVERITY_LABELS, [0, 0, 0, 0], "Findings"),
-            "recommendations_by_status_bar": build_chart("bar", ["pending", "implemented", "overdue"], [0, 0, 0], "Recommendations"),
+            "qacei_by_committee_bar": build_chart("bar", [row["committee"] for row in qacei_rows], [row["qacei_score"] for row in qacei_rows], "QACEI"),
+            "findings_by_severity_pie": build_chart("pie", severity_counts.keys(), severity_counts.values(), "Findings"),
+            "recommendations_by_status_bar": build_chart("bar", recommendation_statuses, recommendation_counts, "Recommendations"),
             "action_plan_completion_trend_line": build_chart("line", [], [], "Completion Rate"),
         },
     }
