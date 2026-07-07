@@ -38,6 +38,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites', # Required by allauth
+    "django_filters",
+    "core",
+    "courses",
+    "lecturers",
+    "examinations",
 
     # Custom App
     'authentication',
@@ -144,11 +149,13 @@ SITE_ID = 1
 
 # Configure REST Framework to use JWT
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
 }
-
 REST_USE_JWT = True
 
 AUTHENTICATION_BACKENDS = [
