@@ -3,10 +3,6 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-[deploy]
-  release_command = "python manage.py migrate"
-
-
 app = 'qap-portal'
 primary_region = 'iad'
 console_command = '/code/manage.py shell'
@@ -33,3 +29,8 @@ console_command = '/code/manage.py shell'
 [[statics]]
   guest_path = '/code/static'
   url_prefix = '/static/'
+
+
+[deploy]
+  release_command = "python manage.py migrate"
+
