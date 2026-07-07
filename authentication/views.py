@@ -75,6 +75,8 @@ class RegistrationView(APIView):
         password = request.data.get('password')
         password_confirm = request.data.get('password_confirm')
         status_choice = request.data.get('status', 'student')
+        first_name = request.data.get('first_name', request.data.get('firstname', ''))
+        last_name = request.data.get('last_name', request.data.get('lastname', ''))
 
         username_m = username.replace(" ", "_") if username else None  # Remove spaces from username
         print(f"Registration attempt with username: {username_m}, email: {email}, status: {status_choice}")
@@ -117,9 +119,11 @@ class RegistrationView(APIView):
             # Create user
             with transaction.atomic():
                 user = User.objects.create_user(
-                    username=username,
+                    username=username_m,
                     email=email,
                     password=password,
+                    first_name=first_name,
+                    last_name=last_name,
                 )
 
                 # The Profile post_save signal may already create this row.
@@ -143,6 +147,8 @@ class RegistrationView(APIView):
                         'id': user.id,
                         'username': user.username.replace("_", " "),  # Replace underscores with spaces for display
                         'email': user.email,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
                     },
                 },
                 status=status.HTTP_201_CREATED,

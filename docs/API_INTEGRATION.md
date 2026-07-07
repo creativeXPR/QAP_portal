@@ -142,6 +142,8 @@ Frontend handling:
 - Store the `access` token in memory or secure storage.
 - Send the token with all protected requests.
 - If a request returns `401`, redirect to login or ask the user to log in again.
+- Current local JWT settings make access tokens valid for 60 minutes and refresh tokens valid for 7 days.
+- The current URL map does not expose a dedicated token refresh endpoint, so frontend refresh behavior should not be assumed unless that route is added.
 
 ### Registration Endpoint
 
@@ -159,6 +161,8 @@ Request:
 {
   "username": "dqa_admin",
   "email": "dqa_admin@example.com",
+  "first_name": "DQA",
+  "last_name": "Admin",
   "password": "StrongPass123!",
   "password_confirm": "StrongPass123!",
   "status": "admin"
@@ -171,6 +175,8 @@ Fields:
 |---|---|---:|---|
 | username | string | Yes | Login username |
 | email | string | Yes | User email |
+| first_name | string | No | User first name. `firstname` is also accepted. |
+| last_name | string | No | User last name. `lastname` is also accepted. |
 | password | string | Yes | Password validated by Django password validators |
 | password_confirm | string | Yes | Must match `password` |
 | status | string | No | Role. Defaults to `student` |
@@ -1312,11 +1318,12 @@ Create request:
 ```json
 {
   "name": "Policy Documents",
-  "slug": "policy-documents",
   "description": "Official policy documents.",
   "is_active": true
 }
 ```
+
+`slug` is optional. If omitted, the backend generates it from `name`.
 
 Delete deactivates the category instead of hard deletion.
 

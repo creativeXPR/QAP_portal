@@ -80,11 +80,12 @@ class InstitutionalDocumentsApiTests(TestCase):
     def test_category_creation_and_soft_delete(self):
         response = self.client.post(
             "/api/institutional-documents/categories/",
-            {"name": "Board Papers", "slug": "board-papers", "description": "Council and board papers."},
+            {"name": "Board Papers", "description": "Council and board papers."},
             format="json",
         )
         self.assertEqual(response.status_code, 201)
         category_id = response.data["data"]["id"]
+        self.assertEqual(InstitutionalDocumentCategory.objects.get(pk=category_id).slug, "board-papers")
         response = self.client.delete(f"/api/institutional-documents/categories/{category_id}/")
         self.assertEqual(response.status_code, 200)
         self.assertFalse(InstitutionalDocumentCategory.objects.get(pk=category_id).is_active)
