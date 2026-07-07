@@ -127,6 +127,7 @@ if __name__ == "__main__":
             "student_email": "demo_user@example.com",
             "feedback": "This is a test feedback.",
             "category": "complaint",
+            "classification": "academic",
             "urgency": "normal"
         }
     )
