@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-4g-vn8boi3nk7@_4)dezwg4c4=k0k(!0rrn)1v^)3zxv@!7csq
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
+
+    'django_ngrok', # For local testing with ngrok
 ]
 
 MIDDLEWARE = [
@@ -172,6 +174,8 @@ ACCOUNT_USERNAME_REQUIRED = True
 CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5500",
     "http://localhost:5500",
+    "http://localhost:5173",
+    # "https://32b2-102-89-68-171.ngrok-free.app/",
 ]
 
 # Logging for debugging OAuth issues
@@ -195,4 +199,15 @@ LOGGING = {
             'level': 'DEBUG',
         },
     },
+}
+
+NGROK_AUTHTOKEN = '2osf7vB0cXMIUxwCd3blEeqmGmi_7p2Vxs9P6Nkwmm7w64LX5'
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),   # e.g. 1 hour
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),      # e.g. 7 days
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": True,
 }

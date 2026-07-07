@@ -27,13 +27,15 @@ class FlexibleLoginView(APIView):
         identifier = request.data.get('username')
         password = request.data.get('password')
 
-        if not identifier or not password:
+        identifier_m = identifier.replace(" ", "_") if identifier else None  # Remove spaces from identifier
+        print(f"Login attempt with identifier: {identifier_m}")
+        if not identifier_m or not password:
             return Response(
                 {'error': 'username and password are required'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        user = authenticate(request, username=identifier, password=password)
+        user = authenticate(request, username=identifier_m, password=password)
 
         if user is None:
             return Response(
@@ -52,8 +54,9 @@ class FlexibleLoginView(APIView):
                 'user_id': user.id,
                 'user': {
                     'id': user.id,
-                    'username': user.username,
+                    'username': user.username.replace("_", " "),  # Replace underscores with spaces for display
                     'email': user.email,
+                    'status': profile.status,
                     'first_name': user.first_name,
                     'last_name': user.last_name,
                 },
@@ -72,8 +75,10 @@ class RegistrationView(APIView):
         password_confirm = request.data.get('password_confirm')
         status_choice = request.data.get('status', 'student')
 
+        username_m = username.replace(" ", "_") if username else None  # Remove spaces from username
+        print(f"Registration attempt with username: {username_m}, email: {email}, status: {status_choice}")
         # Validation
-        if not username or not email or not password or not password_confirm:
+        if not username_m or not email or not password or not password_confirm:
             return Response(
                 {'error': 'username, email, password, and password_confirm are required'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -86,7 +91,7 @@ class RegistrationView(APIView):
             )
 
         # Check if user already exists
-        if User.objects.filter(username=username).exists():
+        if User.objects.filter(username=username_m).exists():
             return Response(
                 {'error': 'Username already exists'},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -110,17 +115,15 @@ class RegistrationView(APIView):
         try:
             # Create user
             user = User.objects.create_user(
-                username=username,
+                username=username_m,
                 email=email,
                 password=password,
             )
 
-            # Create profile with chosen status (profile_complete=True since status was chosen during signup)
-            profile = Profile.objects.create(
-                user=user,
-                status=status_choice,
-                profile_complete=True,
-            )
+            profile, _ = Profile.objects.get_or_create(user=user)
+            profile.status = status_choice
+            profile.profile_complete = True
+            profile.save()
 
             logger.info(f"New user registered: {email} with status {status_choice}")
 
@@ -135,7 +138,7 @@ class RegistrationView(APIView):
                     'user_id': user.id,
                     'user': {
                         'id': user.id,
-                        'username': user.username,
+                        'username': user.username.replace("_", " "),  # Replace underscores with spaces for display
                         'email': user.email,
                     },
                 },
@@ -148,6 +151,8 @@ class RegistrationView(APIView):
                 {'error': 'Failed to create user', 'details': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
 
 @api_view(['POST'])
 def google_login(request):
@@ -197,11 +202,7 @@ def google_login(request):
             defaults={'username': f'user_{google_id[:10]}', 'first_name': '', 'last_name': ''}
         )
         
-        # Ensure profile exists
-        try:
-            profile = user.profile
-        except Profile.DoesNotExist:
-            profile = Profile.objects.create(user=user)
+        profile, _ = Profile.objects.get_or_create(user=user)
 
         # If user was just created, keep profile incomplete
         if created:
@@ -232,7 +233,6 @@ def google_login(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def complete_profile(request):
@@ -242,15 +242,19 @@ def complete_profile(request):
         username = request.data.get('username')
         status_choice = request.data.get('status')
 
-        logger.info(f"Complete profile request - User: {user.email}, Username: {username}, Status: {status_choice}")
+        username_m = username.replace(" ", "_") if username else None  # Remove spaces from username
 
-        if not username:
+        print(f"Complete profile request - User: {user.email}, Username: {username_m}, Status: {status_choice}")
+
+        logger.info(f"Complete profile request - User: {user.email}, Username: {username_m}, Status: {status_choice}")
+
+        if not username_m:
             logger.warning(f"Missing username from {user.email}")
             return Response({'error': 'username is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        user.username = username
+        user.username = username_m
         user.save()
-        logger.info(f"Updated username for {user.email} to {username}")
+        logger.info(f"Updated username for {user.email} to {username_m}")
 
         profile = user.profile
         if status_choice:
@@ -259,7 +263,7 @@ def complete_profile(request):
         profile.save()
         logger.info(f"Marked profile complete for {user.email}")
 
-        return Response({'message': 'Profile updated successfully!', 'username': username, 'status': status_choice}, status=status.HTTP_200_OK)
+        return Response({'message': 'Profile updated successfully!', 'username': username_m.replace("_", " "), 'status': status_choice}, status=status.HTTP_200_OK)
     except Exception as e:
         logger.error(f"Complete profile error: {str(e)}", exc_info=True)
         return Response({'error': 'Failed to update profile', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
