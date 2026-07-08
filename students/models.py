@@ -109,11 +109,11 @@ class StudentFeedback(models.Model):
     student_name = models.CharField(max_length=100)
     student_email = models.EmailField(default="", blank=True, null=True)
     feedback_text = models.TextField()
-    category = models.CharField(max_length=50, choices=Category.choices)
-    classification = models.CharField(max_length=50, choices=Classification.choices, default=Classification.ACADEMIC)
-    status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING)
-    urgency = models.CharField(max_length=20, choices=Urgency.choices, default=Urgency.NORMAL)
-    submission_mode = models.CharField(max_length=50, choices=SubmissionMode.choices, default=SubmissionMode.OPEN_IDENTITY, blank=True)
+    category = models.CharField(max_length=50)
+    classification = models.CharField(max_length=50, default=Classification.ACADEMIC)
+    status = models.CharField(max_length=30, default=Status.PENDING)
+    urgency = models.CharField(max_length=20, default=Urgency.NORMAL)
+    submission_mode = models.CharField(max_length=50, default=SubmissionMode.OPEN_IDENTITY, blank=True)
     admin_comment = models.TextField(blank=True)
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,

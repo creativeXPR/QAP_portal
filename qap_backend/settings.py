@@ -222,3 +222,19 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": True,
 }
+
+import os
+import dj_database_url
+
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        'default': dj_database_url.config(default=os.environ["DATABASE_URL"])
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+

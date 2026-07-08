@@ -43,7 +43,7 @@ def call_api(method, path, data=None, token=None):
 
     print(f"{method.upper()} {path} -> {status_code}")
     if isinstance(body, (dict, list)):
-        print(json.dumps(body, indent=2))
+        print(json.dumps(body, indent=4))
     else:
         print(body)
     print("-" * 60)
@@ -110,6 +110,16 @@ def run_student_feedback_flow(token, feedback_data):
     else:
         print("Feedback submission failed or returned unexpected response.")
 
+
+def run_student_feedback_get_flow(token):
+    print("Testing student feedback retrieval...")
+    _, feedback_list_body = call_api("get", "/api/students/feedback-tracking/", token=token)
+
+    if isinstance(feedback_list_body, list):
+        print("Feedback retrieval response:", feedback_list_body)
+    else:
+        print("Feedback retrieval failed or returned unexpected response.")
+
 if __name__ == "__main__":
     _, login_body = test_login(
         identifier="demo_user",
@@ -120,16 +130,17 @@ if __name__ == "__main__":
     if not access_token:
         raise SystemExit("No access token returned from login.")
 
-    run_student_feedback_flow(
-        token=access_token,
-        feedback_data={
-            "student": "demo_user",
-            "student_email": "demo_user@example.com",
-            "feedback": "This is a test feedback.",
-            "category": "complaint",
-            "classification": "academic",
-            "urgency": "normal",
-            "submission_mode": "open_identity"
-        }
-    )
+    # run_student_feedback_flow(
+    #     token=access_token,
+    #     feedback_data={
+    #         "student": "demo_user",
+    #         "student_email": "demo_user@example.com",
+    #         "feedback": "This is a test feedback.",
+    #         "category": "complaint",
+    #         "classification": "academic",
+    #         "urgency": "normal",
+    #         "submission_mode": "open_identity"
+    #     }
+    # )
 
+    run_student_feedback_get_flow(token=access_token)
