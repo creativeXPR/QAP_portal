@@ -186,13 +186,16 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5500",
     "http://localhost:5500",
     "http://localhost:5173",
-    "http://192.168.227.193:5173",
+    "http://192.168.0.107:5174",
     "https://qap-portal.fly.dev",
+    "https://qap-pi.vercel.app",
+    "https://ui-qap.vercel.app",
     # "https://32b2-102-89-68-171.ngrok-free.app/",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://qap-portal.fly.dev",
+    "https://qap-pi.vercel.app",
 ]
 
 # Logging for debugging OAuth issues
