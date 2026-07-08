@@ -13,12 +13,17 @@ from google.auth.transport import requests
 from google.oauth2 import id_token
 from .models import Profile
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
 # Your Google Client ID from Google Cloud Console
-GOOGLE_CLIENT_ID = "939210716621-jtf38t8tluotrd0jb467uo6f9vm9nnqn.apps.googleusercontent.com"  # Replace with your actual Client ID
+GOOGLE_CLIENT_ID = os.environ.get(
+    "GOOGLE_CLIENT_ID",
+    "939210716621-jtf38t8tluotrd0jb467uo6f9vm9nnqn.apps.googleusercontent.com",
+)
+VALID_PROFILE_STATUSES = {value for value, _ in Profile.STATUS_CHOICES}
 
 
 class FlexibleLoginView(APIView):
@@ -90,6 +95,12 @@ class RegistrationView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if status_choice not in VALID_PROFILE_STATUSES:
+            return Response(
+                {'error': 'Invalid status'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Check if user already exists
         if User.objects.filter(username=username_m).exists():
             return Response(
@@ -142,6 +153,7 @@ class RegistrationView(APIView):
                         'id': user.id,
                         'username': user.username.replace("_", " "),  # Replace underscores with spaces for display
                         'email': user.email,
+                        'status': profile.status,
                         'full_name': user.get_full_name() or user.username.replace("_", " "),
                     },
                 },
@@ -252,6 +264,9 @@ def complete_profile(request):
         if not username_m:
             logger.warning(f"Missing username from {user.email}")
             return Response({'error': 'username is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if status_choice and status_choice not in VALID_PROFILE_STATUSES:
+            return Response({'error': 'Invalid status'}, status=status.HTTP_400_BAD_REQUEST)
 
         user.username = username_m
         user.save()

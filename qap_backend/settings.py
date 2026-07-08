@@ -10,22 +10,42 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def env_bool(name, default=False):
+    return os.environ.get(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_list(name, default=None):
+    value = os.environ.get(name)
+    if not value:
+        return default or []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def unique_list(items):
+    return list(dict.fromkeys(item for item in items if item))
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-4g-vn8boi3nk7@_4)dezwg4c4=k0k(!0rrn)1v^)3zxv@!7csq'
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-4g-vn8boi3nk7@_4)dezwg4c4=k0k(!0rrn)1v^)3zxv@!7csq",
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_bool("DJANGO_DEBUG", True)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", ["*"])
 
 
 # Application definition
@@ -66,6 +86,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -76,9 +97,6 @@ MIDDLEWARE = [
 
     # Required by django-allauth
     'allauth.account.middleware.AccountMiddleware',
-
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
 ]
 
 ROOT_URLCONF = 'qap_backend.urls'
@@ -179,28 +197,53 @@ JWT_AUTH_REFRESH_COOKIE = 'my-refresh-token'
 # ACCOUNT_EMAIL_REQUIRED = True
 # ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_LOGIN_METHODS = {'username', 'email'}
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 # ACCOUNT_SIGNUP_FIELDS = 'none' # for testing purposes
 
 # Allows the local HTML file to talk to your API
 # CORS_ALLOW_ALL_ORIGINS = True # Install django-cors-headers later for production security
 
-CORS_ALLOWED_ORIGINS = [
+DEFAULT_CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5500",
     "http://localhost:5500",
+    "http://127.0.0.1:5173",
     "http://localhost:5173",
+    "http://127.0.0.1:5174",
+    "http://localhost:5174",
     "http://192.168.0.107:5174",
     "https://qap-portal.fly.dev",
     "https://qap-pi.vercel.app",
     "https://ui-qap.vercel.app",
-    # "https://32b2-102-89-68-171.ngrok-free.app/",
+    "https://32b2-102-89-68-171.ngrok-free.app",
 ]
 
-CSRF_TRUSTED_ORIGINS = [
+CORS_ALLOWED_ORIGINS = unique_list(
+    DEFAULT_CORS_ALLOWED_ORIGINS + env_list("CORS_ALLOWED_ORIGINS")
+)
+
+CORS_ALLOWED_ORIGIN_REGEXES = unique_list(
+    [
+        r"^http://localhost:\d+$",
+        r"^http://127\.0\.0\.1:\d+$",
+        r"^https://[a-z0-9-]+\.ngrok-free\.app$",
+    ]
+    + env_list("CORS_ALLOWED_ORIGIN_REGEXES")
+)
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "ngrok-skip-browser-warning",
+]
+
+DEFAULT_CSRF_TRUSTED_ORIGINS = [
     "https://qap-portal.fly.dev",
     "https://qap-pi.vercel.app",
+    "https://ui-qap.vercel.app",
+    "https://32b2-102-89-68-171.ngrok-free.app",
 ]
+
+CSRF_TRUSTED_ORIGINS = unique_list(
+    DEFAULT_CSRF_TRUSTED_ORIGINS + env_list("CSRF_TRUSTED_ORIGINS")
+)
 
 # Logging for debugging OAuth issues
 LOGGING = {
@@ -234,7 +277,6 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
 }
 
-import os
 import dj_database_url
 
 if os.environ.get("DATABASE_URL"):
