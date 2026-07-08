@@ -191,6 +191,10 @@ CORS_ALLOWED_ORIGINS = [
     # "https://32b2-102-89-68-171.ngrok-free.app/",
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://qap-portal.fly.dev",
+]
+
 # Logging for debugging OAuth issues
 LOGGING = {
     'version': 1,
