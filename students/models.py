@@ -139,6 +139,28 @@ class StudentFeedback(models.Model):
         return f"Feedback from {self.student_name} at {self.submitted_at}"
 
 
+class StudentFeedbackAttachment(models.Model):
+    complaint = models.ForeignKey(StudentFeedback, related_name="attachments", on_delete=models.CASCADE)
+    file = models.FileField(upload_to="student_feedback/attachments/")
+    original_name = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=120, blank=True)
+    size = models.PositiveIntegerField(default=0)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        related_name="student_feedback_attachments",
+        on_delete=models.SET_NULL,
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["uploaded_at", "id"]
+
+    def __str__(self):
+        return self.original_name
+
+
 class StudentFeedbackUpdate(models.Model):
     complaint = models.ForeignKey(StudentFeedback, related_name="updates", on_delete=models.CASCADE)
     previous_status = models.CharField(max_length=30, choices=StudentFeedback.Status.choices, blank=True)

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Student, StudentFeedback, StudentFeedbackUpdate, StudentNotification
+from .models import Student, StudentFeedback, StudentFeedbackAttachment, StudentFeedbackUpdate, StudentNotification
 
 
 @admin.register(Student)
@@ -15,6 +15,13 @@ class StudentFeedbackAdmin(admin.ModelAdmin):
     list_display = ("student_name", "category", "urgency", "status", "assigned_to", "updated_by", "submitted_by", "submitted_at", "updated_at")
     list_filter = ("category", "classification", "urgency", "status", "assigned_to")
     search_fields = ("student_name", "feedback_text", "admin_comment", "submitted_by__username", "assigned_to__username")
+
+
+@admin.register(StudentFeedbackAttachment)
+class StudentFeedbackAttachmentAdmin(admin.ModelAdmin):
+    list_display = ("original_name", "complaint", "content_type", "size", "uploaded_by", "uploaded_at")
+    list_filter = ("content_type", "uploaded_at")
+    search_fields = ("original_name", "complaint__student_name", "uploaded_by__username")
 
 
 @admin.register(StudentFeedbackUpdate)
