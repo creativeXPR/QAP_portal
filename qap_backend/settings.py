@@ -217,6 +217,8 @@ DEFAULT_CORS_ALLOWED_ORIGINS = [
     "https://32b2-102-89-68-171.ngrok-free.app",
 ]
 
+CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOWED_ORIGINS = unique_list(
     DEFAULT_CORS_ALLOWED_ORIGINS + env_list("CORS_ALLOWED_ORIGINS")
 )
@@ -271,7 +273,7 @@ LOGGING = {
 from datetime import timedelta
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),   # e.g. 1 hour
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=120),   # e.g. 1 hour
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),      # e.g. 7 days
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": True,
