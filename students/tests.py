@@ -1,12 +1,20 @@
+import shutil
+import tempfile
+
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.test import override_settings
 from rest_framework.test import APIClient
 
 from core.models import Department, Faculty
 from courses.models import Course
 
-from .models import Student, StudentFeedback, StudentFeedbackUpdate, StudentNotification
+from .models import Student, StudentFeedback, StudentFeedbackAttachment, StudentFeedbackUpdate, StudentNotification
 from .serializers import StudentFeedbackSerializer
+
+
+MEDIA_ROOT = tempfile.mkdtemp()
 
 
 class StudentApiTests(TestCase):
@@ -179,6 +187,11 @@ class StudentFeedbackApiTests(TestCase):
             password="password",
         )
 
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(MEDIA_ROOT, ignore_errors=True)
+
     def test_serializer_accepts_frontend_feedback_fields(self):
         payload = {
             "student": "demo_user",
@@ -225,6 +238,68 @@ class StudentFeedbackApiTests(TestCase):
         self.client.logout()
         unauthenticated_response = self.client.get("/api/students/feedback-tracking/")
         self.assertIn(unauthenticated_response.status_code, [401, 403])
+
+    @override_settings(MEDIA_ROOT=MEDIA_ROOT)
+    def test_feedback_endpoint_accepts_multipart_attachments(self):
+        self.client.force_authenticate(self.user)
+        screenshot = SimpleUploadedFile("screenshot.png", b"png-content", content_type="image/png")
+        evidence = SimpleUploadedFile("evidence.pdf", b"pdf-content", content_type="application/pdf")
+
+        response = self.client.post(
+            "/api/students/feedback-tracking/",
+            {
+                "student": "student_user",
+                "feedback": "Attached evidence for this complaint.",
+                "category": "complaint",
+                "classification": "academic",
+                "urgency": "normal",
+                "submission_mode": "open_identity",
+                "attachments": [screenshot, evidence],
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 201, response.data)
+        feedback = StudentFeedback.objects.get()
+        self.assertEqual(feedback.attachments.count(), 2)
+        self.assertEqual(StudentFeedbackAttachment.objects.filter(uploaded_by=self.user).count(), 2)
+        self.assertEqual(len(response.data["attachments"]), 2)
+        self.assertEqual(response.data["attachments"][0]["original_name"], "screenshot.png")
+        self.assertIn("url", response.data["attachments"][0])
+
+    @override_settings(MEDIA_ROOT=MEDIA_ROOT)
+    def test_feedback_endpoint_rejects_invalid_attachments(self):
+        self.client.force_authenticate(self.user)
+
+        bad_type_response = self.client.post(
+            "/api/students/feedback-tracking/",
+            {
+                "student": "student_user",
+                "feedback": "Invalid extension.",
+                "category": "complaint",
+                "attachments": [
+                    SimpleUploadedFile("malware.exe", b"bad", content_type="application/octet-stream"),
+                ],
+            },
+            format="multipart",
+        )
+        self.assertEqual(bad_type_response.status_code, 400)
+        self.assertIn("attachments", bad_type_response.data)
+
+        oversized_response = self.client.post(
+            "/api/students/feedback-tracking/",
+            {
+                "student": "student_user",
+                "feedback": "Oversized file.",
+                "category": "complaint",
+                "attachments": [
+                    SimpleUploadedFile("large.pdf", b"x" * (1024 * 1024 + 1), content_type="application/pdf"),
+                ],
+            },
+            format="multipart",
+        )
+        self.assertEqual(oversized_response.status_code, 400)
+        self.assertIn("attachments", oversized_response.data)
 
     def test_feedback_permissions_filter_non_manager_records(self):
         other_user = get_user_model().objects.create_user(username="other_student", password="password")
