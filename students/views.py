@@ -1,7 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from .models import Student, StudentFeedback, StudentFeedbackUpdate, StudentNotification
@@ -9,24 +8,11 @@ from .permissions import MANAGER_ROLES, StudentFeedbackPermission, StudentRecord
 from .serializers import StudentFeedbackSerializer, StudentNotificationSerializer, StudentSerializer
 
 
-def feedback_status_label(status_value):
-    labels = {
-        StudentFeedback.Status.PENDING: "Pending",
-        StudentFeedback.Status.UNDER_REVIEW: "Under Review",
-        "in_progress": "In Progress",
-        "awaiting_student_response": "Awaiting Student Response",
-        StudentFeedback.Status.RESOLVED: "Resolved",
-        "closed": "Closed",
-        "rejected": "Rejected",
-    }
-    return labels.get(status_value, str(status_value or "").replace("_", " ").title())
-
-
 def complaint_update_message(complaint, changed_fields):
-    status_label = feedback_status_label(complaint.status)
+    status_label = complaint.get_status_display()
     if complaint.status == StudentFeedback.Status.RESOLVED:
         return "Your complaint has been resolved."
-    if complaint.status == "closed":
+    if complaint.status == StudentFeedback.Status.CLOSED:
         return "Your complaint has been closed."
     if "admin_comment" in changed_fields and "status" not in changed_fields:
         return "The administrator has responded to your complaint."
@@ -68,7 +54,6 @@ class StudentViewSet(viewsets.ModelViewSet):
 class StudentFeedbackViewSet(viewsets.ModelViewSet):
     serializer_class = StudentFeedbackSerializer
     permission_classes = [StudentFeedbackPermission]
-    parser_classes = [JSONParser, MultiPartParser, FormParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["category", "classification", "status", "urgency", "submitted_by", "assigned_to"]
     search_fields = ["student_name", "feedback_text", "admin_comment", "submitted_by__username", "assigned_to__username"]
@@ -78,7 +63,7 @@ class StudentFeedbackViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = (
             StudentFeedback.objects.select_related("submitted_by", "assigned_to", "updated_by")
-            .prefetch_related("updates", "notifications", "attachments")
+            .prefetch_related("updates", "notifications")
             .all()
         )
         if role_for(self.request.user) in MANAGER_ROLES:

@@ -1,44 +1,7 @@
 from rest_framework import serializers
 
-from .models import Student, StudentFeedback, StudentFeedbackAttachment, StudentFeedbackUpdate, StudentNotification
+from .models import Student, StudentFeedback, StudentFeedbackUpdate, StudentNotification
 from .permissions import MANAGER_ROLES, role_for
-
-
-ALLOWED_ATTACHMENT_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
-MAX_ATTACHMENT_SIZE = 1024 * 1024
-
-
-def get_uploaded_attachments(request):
-    if not request:
-        return []
-    files = []
-    for key in ("attachments", "attachments[]", "attachment_uploads"):
-        files.extend(request.FILES.getlist(key))
-    return files
-
-
-def validate_feedback_attachment(file_obj):
-    name = getattr(file_obj, "name", "")
-    extension = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
-    if extension not in ALLOWED_ATTACHMENT_EXTENSIONS:
-        allowed = ", ".join(sorted(ALLOWED_ATTACHMENT_EXTENSIONS))
-        raise serializers.ValidationError(f"Unsupported file type. Allowed extensions: {allowed}.")
-    if getattr(file_obj, "size", 0) > MAX_ATTACHMENT_SIZE:
-        raise serializers.ValidationError("Attachment must not exceed 1MB.")
-
-
-def create_feedback_attachments(complaint, files, user):
-    return [
-        StudentFeedbackAttachment.objects.create(
-            complaint=complaint,
-            file=file_obj,
-            original_name=getattr(file_obj, "name", ""),
-            content_type=getattr(file_obj, "content_type", "") or "",
-            size=getattr(file_obj, "size", 0) or 0,
-            uploaded_by=user if getattr(user, "is_authenticated", False) else None,
-        )
-        for file_obj in files
-    ]
 
 
 class StudentSerializer(serializers.ModelSerializer):
@@ -140,23 +103,6 @@ class StudentFeedbackNotificationSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class StudentFeedbackAttachmentSerializer(serializers.ModelSerializer):
-    url = serializers.SerializerMethodField()
-
-    class Meta:
-        model = StudentFeedbackAttachment
-        fields = ["id", "original_name", "content_type", "size", "url", "uploaded_by", "uploaded_at"]
-        read_only_fields = fields
-
-    def get_url(self, obj):
-        if not obj.file:
-            return ""
-        request = self.context.get("request")
-        if request:
-            return request.build_absolute_uri(obj.file.url)
-        return obj.file.url
-
-
 class StudentFeedbackSerializer(serializers.ModelSerializer):
     student = serializers.CharField(source="student_name")
     feedback = serializers.CharField(source="feedback_text")
@@ -166,7 +112,6 @@ class StudentFeedbackSerializer(serializers.ModelSerializer):
     updated_by_username = serializers.CharField(source="updated_by.username", read_only=True)
     updates = StudentFeedbackUpdateSerializer(many=True, read_only=True)
     notification_history = StudentFeedbackNotificationSerializer(source="notifications", many=True, read_only=True)
-    attachments = StudentFeedbackAttachmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = StudentFeedback
@@ -191,7 +136,6 @@ class StudentFeedbackSerializer(serializers.ModelSerializer):
             "updated_at",
             "updates",
             "notification_history",
-            "attachments",
         ]
         read_only_fields = [
             "id",
@@ -204,45 +148,11 @@ class StudentFeedbackSerializer(serializers.ModelSerializer):
             "updated_at",
             "updates",
             "notification_history",
-            "attachments",
         ]
-
-    def validate_category(self, value):
-        allowed = {choice.value for choice in StudentFeedback.Category}
-        if value not in allowed:
-            raise serializers.ValidationError("Select a valid category.")
-        return value
-
-    def validate_classification(self, value):
-        allowed = {choice.value for choice in StudentFeedback.Classification}
-        if value not in allowed:
-            raise serializers.ValidationError("Select a valid classification.")
-        return value
-
-    def validate_urgency(self, value):
-        allowed = {choice.value for choice in StudentFeedback.Urgency}
-        if value not in allowed:
-            raise serializers.ValidationError("Select a valid urgency.")
-        return value
-
-    def validate_submission_mode(self, value):
-        allowed = {choice.value for choice in StudentFeedback.SubmissionMode}
-        if value not in allowed:
-            raise serializers.ValidationError("Select a valid submission mode.")
-        return value
 
     def validate(self, attrs):
         request = self.context.get("request")
         is_manager = role_for(getattr(request, "user", None)) in MANAGER_ROLES if request else False
-        attachment_errors = []
-        for file_obj in get_uploaded_attachments(request):
-            try:
-                validate_feedback_attachment(file_obj)
-            except serializers.ValidationError as exc:
-                attachment_errors.append({getattr(file_obj, "name", "attachment"): exc.detail})
-        if attachment_errors:
-            raise serializers.ValidationError({"attachments": attachment_errors})
-
         if self.instance is None:
             forbidden_fields = []
             if attrs.get("status") and attrs["status"] != StudentFeedback.Status.PENDING:
@@ -264,15 +174,3 @@ class StudentFeedbackSerializer(serializers.ModelSerializer):
                     {field: ["Only authorized staff can update this field."] for field in attempted}
                 )
         return attrs
-
-    def create(self, validated_data):
-        complaint = super().create(validated_data)
-        request = self.context.get("request")
-        create_feedback_attachments(complaint, get_uploaded_attachments(request), getattr(request, "user", None))
-        return complaint
-
-    def update(self, instance, validated_data):
-        complaint = super().update(instance, validated_data)
-        request = self.context.get("request")
-        create_feedback_attachments(complaint, get_uploaded_attachments(request), getattr(request, "user", None))
-        return complaint
