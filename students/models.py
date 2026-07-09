@@ -111,7 +111,7 @@ class StudentFeedback(models.Model):
     feedback_text = models.TextField()
     category = models.CharField(max_length=50)
     classification = models.CharField(max_length=50, default=Classification.ACADEMIC)
-    status = models.CharField(max_length=30, default=Status.PENDING)
+    status = models.CharField(max_length=30, choices=Status, default=Status.PENDING)
     urgency = models.CharField(max_length=20, default=Urgency.NORMAL)
     submission_mode = models.CharField(max_length=50, default=SubmissionMode.OPEN_IDENTITY, blank=True)
     admin_comment = models.TextField(blank=True)

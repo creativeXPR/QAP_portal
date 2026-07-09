@@ -12,7 +12,7 @@ def complaint_update_message(complaint, changed_fields):
     status_label = complaint.get_status_display()
     if complaint.status == StudentFeedback.Status.RESOLVED:
         return "Your complaint has been resolved."
-    if complaint.status == StudentFeedback.Status.CLOSED:
+    if complaint.status == StudentFeedback.Status.UNDER_REVIEW:
         return "Your complaint has been closed."
     if "admin_comment" in changed_fields and "status" not in changed_fields:
         return "The administrator has responded to your complaint."

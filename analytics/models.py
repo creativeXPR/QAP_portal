@@ -4,6 +4,7 @@ class KPI(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     embedlink = models.TextField()
+    category = models.CharField(max_length=255, default='academic')
     metrics = models.JSONField(default=list, blank=True)
 
     def __str__(self):

@@ -4,6 +4,6 @@ from .models import KPI
 # Register your models here.
 @admin.register(KPI)
 class KPIAdmin(admin.ModelAdmin):
-    list_display = ("title", "description", "embedlink", "metrics")
-    list_filter = ("title", "description")
-    search_fields = ("title", "description")
+    list_display = ("title", "description", "category", "embedlink", "metrics")
+    list_filter = ("title", "description", "category")
+    search_fields = ("title", "description", "category")

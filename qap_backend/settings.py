@@ -216,7 +216,7 @@ DEFAULT_CORS_ALLOWED_ORIGINS = [
     "https://qap-portal.fly.dev",
     "https://qap-pi.vercel.app",
     "https://ui-qap.vercel.app",
-    "https://32b2-102-89-68-171.ngrok-free.app",
+    "https://2927-102-89-85-215.ngrok-free.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -242,7 +242,7 @@ DEFAULT_CSRF_TRUSTED_ORIGINS = [
     "https://qap-portal.fly.dev",
     "https://qap-pi.vercel.app",
     "https://ui-qap.vercel.app",
-    "https://32b2-102-89-68-171.ngrok-free.app",
+    "https://2927-102-89-85-215.ngrok-free.app",
 ]
 
 CSRF_TRUSTED_ORIGINS = unique_list(

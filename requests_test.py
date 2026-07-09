@@ -292,6 +292,82 @@ def run_admin_PO_KPI_endpoints_test():
     print("======================================")
 
 
+def test_update_post(data={}, token=None):
+    print("Testing Update POST endpoint...")
+    return call_api("post", "/api/updates/endpoints/", data=data, token=token)
+
+def test_update_list(token=None):
+    print("Testing Update GET endpoint...")
+    return call_api("get", "/api/updates/endpoints/", token=token)
+
+def run_update_endpoints_test():
+    print("=== RUNNING UPDATE ENDPOINTS TESTS ===")
+    
+    password = "StrongPass123!"
+
+    # 1. Non-admin (Student) test
+    print("\n--- Test 1: Non-admin (Student) request ---")
+    username_student = "test_student_user"
+    email_student = "student_user@example.com"
+    
+    data = {
+        'category': 'General',
+        'title': 'Test Update',
+        'description': 'This is a test update.',
+        'classification': 'Info',
+        'forUser': 'student',
+        'button': {'label': 'Click Here', 'url': 'http://example.com'}
+    }
+    
+    status_code, login_body = test_login(username_student, password)
+    if status_code != 200:
+        test_register(username_student, email_student, password, status="student")
+        status_code, login_body = test_login(username_student, password)
+        
+    if status_code == 200:
+        student_token = login_body.get("access")
+        
+        # Student POST (Should fail with 403)
+        print(">> Student attempting POST (Expecting 403)")
+        status_code, _ = test_update_post(data=data, token=student_token)
+        print(f"Status code received: {status_code} (Expected 403)")
+        
+        # Student GET (Should succeed with 200)
+        print(">> Student attempting GET (Expecting 200)")
+        status_code, _ = test_update_list(token=student_token)
+        print(f"Status code received: {status_code} (Expected 200)")
+    else:
+        print("Failed to authenticate student, skipping student test.")
+
+    # 2. Admin test
+    print("\n--- Test 2: Admin request ---")
+    username_admin = "test_admin_user"
+    email_admin = "admin_user@example.com"
+    
+    status_code, login_body = test_login(username_admin, password)
+    if status_code != 200:
+        test_register(username_admin, email_admin, password, status="admin")
+        status_code, login_body = test_login(username_admin, password)
+        
+    if status_code == 200:
+        admin_token = login_body.get("access")
+        
+        # Admin POST (Should succeed with 201)
+        print(">> Admin attempting POST (Expecting 201)")
+        status_code, returns = test_update_post(data=data, token=admin_token)
+        print(f"Status code received: {status_code} (Expected 201)")
+        
+        # Admin GET (Should succeed with 200)
+        print(">> Admin attempting GET (Expecting 200)")
+        status_code, returns = test_update_list(token=admin_token)
+        print(f"Status code received: {status_code} (Expected 200)")
+        if status_code == 200:
+            print(f"Successfully retrieved updates: {returns}")
+    else:
+        print("Failed to authenticate admin, skipping admin test.")
+    print("======================================")
+
 if __name__ == "__main__":
     # Run the new admin endpoints security test suite
-    run_admin_PO_KPI_endpoints_test()
+    # run_admin_PO_KPI_endpoints_test()
+    run_admin_KPI_endpoints_test()
