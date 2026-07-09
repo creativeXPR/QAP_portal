@@ -12,8 +12,13 @@ from django.db import transaction
 from google.auth.transport import requests
 from google.oauth2 import id_token
 from .models import Profile
+from .permissions import IsAdminUserStatus
 import logging
 import os
+
+# Add imports at top
+from rest_framework.permissions import IsAuthenticated
+from .permissions import IsAdminUserStatus
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -24,6 +29,27 @@ GOOGLE_CLIENT_ID = os.environ.get(
     "939210716621-jtf38t8tluotrd0jb467uo6f9vm9nnqn.apps.googleusercontent.com",
 )
 VALID_PROFILE_STATUSES = {value for value, _ in Profile.STATUS_CHOICES}
+
+
+
+class AdminUserListView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUserStatus]
+
+    def get(self, request):
+        users = User.objects.all().select_related('profile')
+        user_list = []
+        for user in users:
+            profile = getattr(user, 'profile', None)
+            user_list.append({
+                'id': user.id,
+                'username': user.username.replace("_", " "), # Format for frontend display
+                'email': user.email,
+                'status': profile.status if profile else None,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'is_active': user.is_active,
+            })
+        return Response(user_list, status=status.HTTP_200_OK)
 
 
 class FlexibleLoginView(APIView):
@@ -283,3 +309,30 @@ def complete_profile(request):
     except Exception as e:
         logger.error(f"Complete profile error: {str(e)}", exc_info=True)
         return Response({'error': 'Failed to update profile', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AdminUserListView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUserStatus]
+
+    def get(self, request):
+        try:
+            users = User.objects.all().select_related('profile')
+            user_list = []
+            for user in users:
+                profile = getattr(user, 'profile', None)
+                user_list.append({
+                    'id': user.id,
+                    'username': user.username.replace("_", " "),  # Format for frontend display
+                    'email': user.email,
+                    'status': profile.status if profile else None,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'is_active': user.is_active,
+                })
+            return Response(user_list, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Failed to fetch user list: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Failed to retrieve users', 'details': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

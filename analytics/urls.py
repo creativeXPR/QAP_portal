@@ -9,6 +9,12 @@ from .views import (
     ProgrammesByRiskView,
     TimelineView,
 )
+from rest_framework.routers import DefaultRouter
+from .views import KPIViewSet
+
+router = DefaultRouter()
+router.register(r'kpis', KPIViewSet, basename='kpi')
+
 
 urlpatterns = [
     path("accreditation/overview/", AccreditationOverviewView.as_view(), name="analytics-accreditation-overview"),
@@ -18,4 +24,4 @@ urlpatterns = [
     path("accreditation/faculty-summary/", FacultySummaryView.as_view(), name="analytics-faculty-summary"),
     path("accreditation/department-summary/", DepartmentSummaryView.as_view(), name="analytics-department-summary"),
     path("accreditation/timeline/", TimelineView.as_view(), name="analytics-timeline"),
-]
+] + router.urls

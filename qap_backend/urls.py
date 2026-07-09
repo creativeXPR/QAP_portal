@@ -38,6 +38,9 @@ urlpatterns = [
 
     # Student Feedback
     path('api/students/', include('students.urls')),
+    
+    # Update App
+    path('api/updates/', include('update.urls')),
 
 ]
 

@@ -14,6 +14,18 @@ from accreditation.models import (
 )
 from accreditation.permissions import AccreditationPermission
 from accreditation.services import average_component_scores, evidence_completion_rate
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+
+from .models import KPI
+from .serializers import KPISerializer
+from .permissions import KPIPermission
+
+
+class KPIViewSet(viewsets.ModelViewSet):
+    queryset = KPI.objects.all()
+    serializer_class = KPISerializer
+    permission_classes = [IsAuthenticated, KPIPermission]
 
 
 class AnalyticsResponseMixin:

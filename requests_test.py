@@ -120,27 +120,178 @@ def run_student_feedback_get_flow(token):
     else:
         print("Feedback retrieval failed or returned unexpected response.")
 
+def test_admin_user_list(token=None):
+    print("Testing Admin User List endpoint...")
+    return call_api("get", "/api/auth/google/cred/all/", token=token)
+
+
+def run_admin_endpoints_test():
+    print("=== RUNNING ADMIN USER LIST TESTS ===")
+    
+    # 1. Unauthenticated test (should fail with 401 or 403)
+    print("\n--- Test 1: Unauthenticated request (Expecting 401/403) ---")
+    status_code, _ = test_admin_user_list(token=None)
+    print(f"Status code received: {status_code} (Expected 401/403)")
+
+    # 2. Non-admin test
+    print("\n--- Test 2: Non-admin (Student) request (Expecting 403) ---")
+    username_student = "test_student_user"
+    email_student = "student_user@example.com"
+    password = "StrongPass123!"
+    
+    status_code, login_body = test_login(username_student, password)
+    if status_code != 200:
+        print("Student not found, registering...")
+        test_register(username_student, email_student, password, status="student")
+        status_code, login_body = test_login(username_student, password)
+        
+    if status_code == 200:
+        student_token = login_body.get("access")
+        status_code, _ = test_admin_user_list(token=student_token)
+        print(f"Status code received: {status_code} (Expected 403)")
+    else:
+        print("Failed to authenticate student, skipping non-admin test.")
+
+    # 3. Admin test
+    print("\n--- Test 3: Admin request (Expecting 200) ---")
+    username_admin = "test_admin_user"
+    email_admin = "admin_user@example.com"
+    
+    status_code, login_body = test_login(username_admin, password)
+    if status_code != 200:
+        print("Admin not found, registering...")
+        test_register(username_admin, email_admin, password, status="admin")
+        status_code, login_body = test_login(username_admin, password)
+        
+    if status_code == 200:
+        admin_token = login_body.get("access")
+        status_code, users = test_admin_user_list(token=admin_token)
+        print(f"Status code received: {status_code} (Expected 200)")
+        if status_code == 200:
+            print(f"Successfully retrieved {len(users)} users.")
+            print(f"Successfully retrieved users: {users}")
+    else:
+        print("Failed to authenticate admin, skipping admin test.")
+    print("======================================")
+
+def test_PO_KPI_list(token=None):
+    print("Testing KPI List endpoint...")
+    return call_api("get", "/api/analytics/kpis/", token=token)
+
+
+def test_admin_KPI_post(data={}, token=None):
+    print("Testing KPI List endpoint...")
+    return call_api("post", "/api/analytics/kpis/", data=data, token=token)
+
+
+def run_admin_KPI_endpoints_test():
+    print("=== RUNNING ADMIN KPI ENDPOINTS TESTS ===")
+    
+    # 1. Unauthenticated test (should fail with 401 or 403)
+    print("\n--- Test 1: Unauthenticated request (Expecting 401/403) ---")
+    status_code, _ = test_admin_user_list(token=None)
+    print(f"Status code received: {status_code} (Expected 401/403)")
+
+    # 2. Non-admin test
+    print("\n--- Test 2: Non-admin (Student) request (Expecting 403) ---")
+    username_student = "test_student_user"
+    email_student = "student_user@example.com"
+    password = "StrongPass123!"
+
+    data = {
+        #'id', 'title', 'description', 'embedlink', 'metrics'
+        'title': 'Test KPI',
+        'description': 'This is a test KPI description.',
+        'embedlink': 'https://example.com/kpi-embed',
+        'metrics': {'metric1': 100, 'metric2': 200}
+    }
+    
+    status_code, login_body = test_login(username_student, password)
+    if status_code != 200:
+        print("Student not found, registering...")
+        test_register(username_student, email_student, password, status="student")
+        status_code, login_body = test_login(username_student, password)
+        
+    if status_code == 200:
+        student_token = login_body.get("access")
+        status_code, _ = test_admin_KPI_post(data=data, token=student_token)
+        print(f"Status code received: {status_code} (Expected 403)")
+    else:
+        print("Failed to authenticate student, skipping non-admin test.")
+
+    # 3. Admin test
+    print("\n--- Test 3: Admin request (Expecting 200) ---")
+    username_admin = "test_admin_user"
+    email_admin = "admin_user@example.com"
+    
+    status_code, login_body = test_login(username_admin, password)
+    if status_code != 200:
+        print("Admin not found, registering...")
+        test_register(username_admin, email_admin, password, status="admin")
+        status_code, login_body = test_login(username_admin, password)
+        
+    if status_code == 200:
+        admin_token = login_body.get("access")
+        status_code, Returns = test_admin_KPI_post(data=data, token=admin_token)
+        print(f"Status code received: {status_code} (Expected 200)")
+        if status_code == 200:
+            # print(f"Successfully retrieved {len(Returns)} Returns.")
+            print(f"Successfully retrieved Returns: {Returns}")
+    else:
+        print("Failed to authenticate admin, skipping admin test.")
+    print("======================================")
+
+
+def run_admin_PO_KPI_endpoints_test():
+    print("=== RUNNING PO KPI ENDPOINTS TESTS ===")
+    
+    # 1. Unauthenticated test (should fail with 401 or 403)
+    print("\n--- Test 1: Unauthenticated request (Expecting 401/403) ---")
+    status_code, _ = test_PO_KPI_list(token=None)
+    print(f"Status code received: {status_code} (Expected 401/403)")
+
+    # 2. Non-admin test
+    print("\n--- Test 2: Non-admin (Student) request (Expecting 403) ---")
+    username_student = "test_student_user"
+    email_student = "student_user@example.com"
+    password = "StrongPass123!"
+    
+    status_code, login_body = test_login(username_student, password)
+    if status_code != 200:
+        print("Student not found, registering...")
+        test_register(username_student, email_student, password, status="student")
+        status_code, login_body = test_login(username_student, password)
+        
+    if status_code == 200:
+        student_token = login_body.get("access")
+        status_code, _ = test_PO_KPI_list(token=student_token)
+        print(f"Status code received: {status_code} (Expected 403)")
+    else:
+        print("Failed to authenticate student, skipping non-admin test.")
+
+    # 3. Admin test
+    print("\n--- Test 3: Admin request (Expecting 200) ---")
+    username_admin = "test_admin_user"
+    email_admin = "admin_user@example.com"
+    
+    status_code, login_body = test_login(username_admin, password)
+    if status_code != 200:
+        print("Admin not found, registering...")
+        test_register(username_admin, email_admin, password, status="admin")
+        status_code, login_body = test_login(username_admin, password)
+        
+    if status_code == 200:
+        admin_token = login_body.get("access")
+        status_code, Returns = test_PO_KPI_list(token=admin_token)
+        print(f"Status code received: {status_code} (Expected 200)")
+        if status_code == 200:
+            # print(f"Successfully retrieved {len(Returns)} Returns.")
+            print(f"Successfully retrieved Returns: {Returns}")
+    else:
+        print("Failed to authenticate admin, skipping admin test.")
+    print("======================================")
+
+
 if __name__ == "__main__":
-    _, login_body = test_login(
-        identifier="demo_user",
-        password="StrongPass123!",
-    )
-    access_token = login_body.get("access") if isinstance(login_body, dict) else None
-
-    if not access_token:
-        raise SystemExit("No access token returned from login.")
-
-    # run_student_feedback_flow(
-    #     token=access_token,
-    #     feedback_data={
-    #         "student": "demo_user",
-    #         "student_email": "demo_user@example.com",
-    #         "feedback": "This is a test feedback.",
-    #         "category": "complaint",
-    #         "classification": "academic",
-    #         "urgency": "normal",
-    #         "submission_mode": "open_identity"
-    #     }
-    # )
-
-    run_student_feedback_get_flow(token=access_token)
+    # Run the new admin endpoints security test suite
+    run_admin_PO_KPI_endpoints_test()

@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     'students',
     'dashboards',
     'qa_committee',
+    'update',
     'corsheaders',
 
     # Third-Party Apps
@@ -210,6 +211,7 @@ DEFAULT_CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5174",
     "http://localhost:5174",
+    "http://192.168.0.107:5173",
     "http://192.168.0.107:5174",
     "https://qap-portal.fly.dev",
     "https://qap-pi.vercel.app",
