@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     'dashboards',
     'qa_committee',
     'update',
+    'staffs',
     'corsheaders',
 
     # Third-Party Apps

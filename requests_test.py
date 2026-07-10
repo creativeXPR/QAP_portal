@@ -3,6 +3,7 @@ import urllib.request
 import urllib.error
 
 BASE_URL = "http://127.0.0.1:8000"
+REQUEST_TIMEOUT_SECONDS = 30
 
 
 def call_api(method, path, data=None, token=None):
@@ -23,7 +24,7 @@ def call_api(method, path, data=None, token=None):
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
+        with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             content = response.read().decode("utf-8")
             status_code = response.getcode()
             try:
@@ -83,6 +84,11 @@ def test_google_login(id_token):
     return call_api("post", "/api/auth/google/", payload)
 
 
+def test_status_options():
+    print("Testing auth status options...")
+    return call_api("get", "/api/auth/google/status-options/")
+
+
 def run_auth_flow(username, email, password, status="student"):
     print("Testing registration...")
     _, reg_body = test_register(username, email, password, status=status)
@@ -100,6 +106,18 @@ def run_auth_flow(username, email, password, status="student"):
         test_complete_profile(access_token, username, status=status)
     else:
         print("No access token received; skipping profile completion test.")
+
+
+def ensure_user_token(username, email, password, status="student"):
+    status_code, login_body = test_login(username, password)
+    if status_code != 200:
+        print(f"{status.title()} not found, registering...")
+        test_register(username, email, password, status=status)
+        status_code, login_body = test_login(username, password)
+
+    if status_code == 200 and isinstance(login_body, dict):
+        return login_body.get("access")
+    return None
 
 def run_student_feedback_flow(token, feedback_data):
     print("Testing student feedback submission...")
@@ -119,6 +137,108 @@ def run_student_feedback_get_flow(token):
         print("Feedback retrieval response:", feedback_list_body)
     else:
         print("Feedback retrieval failed or returned unexpected response.")
+
+
+def run_staff_feedback_privilege_tests(token):
+    print("Testing staff feedback privileges...")
+    feedback_data = {
+        "staff": "Test Staff",
+        "staff_email": "staff_user@example.com",
+        "feedback": "This is a test staff feedback.",
+        "category": "suggestion",
+        "classification": "academic",
+        "urgency": "normal",
+    }
+
+    print(">> Staff attempting POST (Expecting 201)")
+    status_code, _ = call_api("post", "/api/staffs/feedback-tracking/", feedback_data, token=token)
+    print(f"Status code received: {status_code} (Expected 201)")
+
+    print(">> Staff attempting GET (Expecting 200)")
+    status_code, feedback_list_body = call_api("get", "/api/staffs/feedback-tracking/", token=token)
+    print(f"Status code received: {status_code} (Expected 200)")
+    if status_code == 200:
+        print(f"Successfully retrieved staff feedback entries: {feedback_list_body}")
+
+
+def run_staff_kpi_privilege_tests(token):
+    print("Testing KPI privileges for staff...")
+    data = {
+        "title": "Test KPI",
+        "description": "This is a test KPI description.",
+        "embedlink": "https://example.com/kpi-embed",
+        "metrics": {"metric1": 100, "metric2": 200},
+    }
+
+    print(">> Staff attempting KPI GET (Expecting 403)")
+    status_code, _ = test_PO_KPI_list(token=token)
+    print(f"Status code received: {status_code} (Expected 403)")
+
+    print(">> Staff attempting KPI POST (Expecting 403)")
+    status_code, _ = test_admin_KPI_post(data=data, token=token)
+    print(f"Status code received: {status_code} (Expected 403)")
+
+
+def run_staff_update_privilege_tests(token):
+    print("Testing update privileges for staff...")
+    data = {
+        'category': 'General',
+        'title': 'Test Update',
+        'description': 'This is a test update.',
+        'classification': 'Info',
+        'forUser': 'staff',
+        'button': {'label': 'Click Here', 'url': 'http://example.com'}
+    }
+
+    print(">> Staff attempting GET (Expecting 200)")
+    status_code, returns = test_update_list(token=token)
+    print(f"Status code received: {status_code} (Expected 200)")
+    if status_code == 200:
+        print(f"Successfully retrieved staff updates: {returns}")
+
+    print(">> Staff attempting POST (Expecting 403)")
+    status_code, _ = test_update_post(data=data, token=token)
+    print(f"Status code received: {status_code} (Expected 403)")
+
+
+def run_auth_status_options_test():
+    print("=== RUNNING AUTH STATUS OPTIONS TEST ===")
+    status_code, body = test_status_options()
+    if status_code == 200 and isinstance(body, dict):
+        statuses = body.get("statuses", [])
+        values = [item.get("value") for item in statuses]
+        print(f"Available auth statuses: {values}")
+        staff_status = next((item for item in statuses if item.get("value") == "staff"), None)
+        if staff_status:
+            print(f"Staff status metadata: {staff_status}")
+            assert staff_status.get("label") == "Staff"
+            assert staff_status.get("is_manager") is False
+        else:
+            raise AssertionError("staff status was not returned by the auth status-options endpoint")
+    print("======================================")
+
+
+def run_staff_status_auth_test():
+    print("=== RUNNING STAFF STATUS AUTH TEST ===")
+    password = "StrongPass123!"
+    username_staff = "test_staff_user"
+    email_staff = "staff_user@example.com"
+
+    staff_token = ensure_user_token(username_staff, email_staff, password, status="staff")
+    if not staff_token:
+        raise AssertionError("Expected staff login or registration to produce an access token")
+
+    print("Testing staff auth payload status...")
+    status_code, login_body = test_login(username_staff, password)
+    if status_code != 200 or not isinstance(login_body, dict):
+        raise AssertionError(f"Expected staff login to succeed, got {status_code}: {login_body}")
+
+    user_data = login_body.get("user") or {}
+    if user_data.get("status") != "staff":
+        raise AssertionError(f"Expected staff login status to be staff, got {user_data.get('status')}")
+
+    print("Staff status auth flow verified successfully.")
+    print("======================================")
 
 def test_admin_user_list(token=None):
     print("Testing Admin User List endpoint...")
@@ -367,7 +487,62 @@ def run_update_endpoints_test():
         print("Failed to authenticate admin, skipping admin test.")
     print("======================================")
 
+def run_staff_feedback_flow(token, feedback_data):
+    print("Testing staff feedback submission...")
+    _, feedback_body = call_api("post", "/api/staffs/feedback-tracking/", feedback_data, token=token)
+
+    if isinstance(feedback_body, dict):
+        print("Feedback submission response:", feedback_body)
+    else:
+        print("Feedback submission failed or returned unexpected response.")
+
+
+def run_staff_feedback_get_flow(token):
+    print("Testing staff feedback retrieval...")
+    _, feedback_list_body = call_api("get", "/api/staffs/feedback-tracking/", token=token)
+
+    if isinstance(feedback_list_body, list):
+        print("Feedback retrieval response:", feedback_list_body)
+    else:
+        print("Feedback retrieval failed or returned unexpected response.")
+
+def run_staff_feedback_tests():
+    print("=== RUNNING STAFF FEEDBACK TESTS ===")
+    
+    password = "StrongPass123!"
+    username_staff = "test_staff_user"
+    email_staff = "staff_user@example.com"
+    
+    staff_token = ensure_user_token(username_staff, email_staff, password, status="staff")
+    if staff_token:
+        run_staff_feedback_privilege_tests(staff_token)
+    else:
+        print("Failed to authenticate staff, skipping staff feedback test.")
+    print("======================================")
+
+
+def run_staff_integration_tests():
+    print("=== RUNNING STAFF INTEGRATION TESTS ===")
+    run_auth_status_options_test()
+
+    password = "StrongPass123!"
+    username_staff = "test_staff_user"
+    email_staff = "staff_user@example.com"
+    staff_token = ensure_user_token(username_staff, email_staff, password, status="staff")
+
+    if staff_token:
+        run_staff_feedback_privilege_tests(staff_token)
+        run_staff_kpi_privilege_tests(staff_token)
+        run_staff_update_privilege_tests(staff_token)
+    else:
+        print("Failed to authenticate staff, skipping staff integration tests.")
+    print("======================================")
+
 if __name__ == "__main__":
     # Run the new admin endpoints security test suite
     # run_admin_PO_KPI_endpoints_test()
-    run_admin_KPI_endpoints_test()
+    # run_admin_KPI_endpoints_test()
+    run_auth_status_options_test()
+    run_staff_status_auth_test()
+    run_staff_feedback_tests()
+    run_staff_integration_tests()

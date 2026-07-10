@@ -1,5 +1,7 @@
 from rest_framework.permissions import BasePermission
 
+from .roles import role_for
+
 class IsAdminUserStatus(BasePermission):
     """
     Allows access only to authenticated users who have 'admin' status in their Profile.

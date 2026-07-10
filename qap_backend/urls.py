@@ -39,9 +39,13 @@ urlpatterns = [
     # Student Feedback
     path('api/students/', include('students.urls')),
     
+    # Student Feedback
+    path('api/staffs/', include('staffs.urls')),
+    
     # Update App
     path('api/updates/', include('update.urls')),
 
+    path('api/staffs/', include('staffs.urls')),
 ]
 
 if settings.DEBUG:

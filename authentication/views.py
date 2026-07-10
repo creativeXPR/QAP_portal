@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from google.auth.transport import requests
 from google.oauth2 import id_token
+from .constants import PROFILE_STATUS_VALUES, profile_status_options
 from .models import Profile
 from .permissions import IsAdminUserStatus
 import logging
@@ -28,7 +29,7 @@ GOOGLE_CLIENT_ID = os.environ.get(
     "GOOGLE_CLIENT_ID",
     "939210716621-jtf38t8tluotrd0jb467uo6f9vm9nnqn.apps.googleusercontent.com",
 )
-VALID_PROFILE_STATUSES = {value for value, _ in Profile.STATUS_CHOICES}
+VALID_PROFILE_STATUSES = PROFILE_STATUS_VALUES
 
 
 
@@ -336,3 +337,16 @@ class AdminUserListView(APIView):
                 {'error': 'Failed to retrieve users', 'details': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class ProfileStatusOptionsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response(
+            {
+                "statuses": profile_status_options(),
+                "default_status": "student",
+            },
+            status=status.HTTP_200_OK,
+        )
