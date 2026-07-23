@@ -1,4 +1,5 @@
 PROFILE_STATUS_CHOICES = [
+    ("guest", "Guest"),
     ("student", "Student"),
     ("staff", "Staff"),
     ("focal_person", "Focal Person"),

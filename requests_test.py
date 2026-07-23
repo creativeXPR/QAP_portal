@@ -542,7 +542,10 @@ if __name__ == "__main__":
     # Run the new admin endpoints security test suite
     # run_admin_PO_KPI_endpoints_test()
     # run_admin_KPI_endpoints_test()
-    run_auth_status_options_test()
-    run_staff_status_auth_test()
-    run_staff_feedback_tests()
-    run_staff_integration_tests()
+    # test_register('guest user test', 'email@example.com', 'password...2025', password_confirm=None, status="guest")
+    test_login('guest_user test', 'password...2025')
+
+    # run_auth_status_options_test()
+    # run_staff_status_auth_test()
+    # run_staff_feedback_tests()
+    # run_staff_integration_tests()

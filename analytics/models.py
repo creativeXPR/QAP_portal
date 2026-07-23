@@ -6,6 +6,7 @@ class KPI(models.Model):
     embedlink = models.TextField()
     category = models.CharField(max_length=255, default='academic')
     metrics = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=50, default='guest')
 
     def __str__(self):
         return self.title
